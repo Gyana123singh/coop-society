@@ -13,12 +13,14 @@ const LoginScreen = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
   // Fetch REAL active housing societies directly from MongoDB (Rafi, Gyana, etc.)
   const fetchLiveSocieties = async () => {
     setLoadingSocieties(true);
     setError('');
     try {
-      const res = await axios.get(`http://localhost:5000/api/v1/auth/public-vendors?t=${Date.now()}`);
+      const res = await axios.get(`${API_URL}/api/v1/auth/public-vendors?t=${Date.now()}`);
       if (res.data?.success && res.data.data?.vendors?.length > 0) {
         const realVendors = res.data.data.vendors;
         setSocieties(realVendors);
@@ -29,7 +31,7 @@ const LoginScreen = () => {
       }
     } catch (err) {
       console.error('Failed to fetch real housing societies from MongoDB:', err);
-      setError('Could not connect to backend server. Ensure Express backend is running on port 5000.');
+      setError('Could not connect to backend server. Ensure Express backend is running.');
     } finally {
       setLoadingSocieties(false);
     }
@@ -61,7 +63,7 @@ const LoginScreen = () => {
 
     try {
       // 1. Verify Member Pre-Registration for the Selected Society in MongoDB
-      const res = await axios.post('http://localhost:5000/api/v1/auth/send-otp', {
+      const res = await axios.post(`${API_URL}/api/v1/auth/send-otp`, {
         phoneOrEmail: formattedPhone,
         vendorId: selectedSocietyId
       });
