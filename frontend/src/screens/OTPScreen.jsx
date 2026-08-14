@@ -11,7 +11,8 @@ const OTPScreen = () => {
   const { login } = useAuth();
   const phone = location.state?.phone;
   const societyName = location.state?.societyName || 'Housing Society';
-  const confirmationResult = location.state?.confirmationResult;
+  const hasFirebaseSession = location.state?.hasFirebaseSession;
+  const activeConfirmationResult = window.confirmationResult;
 
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -35,9 +36,9 @@ const OTPScreen = () => {
       let firebaseToken = null;
 
       // 1. Real-time Firebase Phone Auth Verification
-      if (confirmationResult) {
+      if (hasFirebaseSession || activeConfirmationResult) {
         try {
-          const verifiedUser = await verifyFirebasePhoneOTP(confirmationResult, otp);
+          const verifiedUser = await verifyFirebasePhoneOTP(activeConfirmationResult, otp);
           firebaseToken = verifiedUser.idToken;
           console.log('[Firebase Real-time Verification Success]', verifiedUser.phoneNumber);
         } catch (fbErr) {

@@ -89,7 +89,7 @@ const LoginScreen = () => {
             phone: formattedPhone,
             societyId: selectedSocietyId,
             societyName,
-            confirmationResult,
+            hasFirebaseSession: !!confirmationResult,
             devOtpCode
           }
         });
