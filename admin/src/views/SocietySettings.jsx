@@ -78,7 +78,7 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-slate-300 mb-1 font-semibold">Registration No. / Tax ID *</label>
             <input
@@ -105,7 +105,7 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
             />
           </div>
 
-          <div>
+          <div className="sm:col-span-2 md:col-span-1">
             <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
               <Phone className="w-3.5 h-3.5 text-indigo-400" />
               <span>Official Contact Phone</span>
@@ -126,7 +126,7 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
             <span>Receipt Voucher Sequence & Signature Settings</span>
           </h3>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-slate-300 mb-1 font-semibold">Current Book No.</label>
               <input
@@ -170,10 +170,10 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
             <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
               <FileText className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h4 className="text-sm font-bold leading-tight">{formData.name || 'Society Name'}</h4>
-              <p className="text-xs text-white/90 leading-tight mt-0.5">{formData.address || 'Society Address'}</p>
-              <p className="text-xs text-white/90 leading-tight mt-1">
+            <div className="min-w-0">
+              <h4 className="text-sm font-bold leading-tight truncate">{formData.name || 'Society Name'}</h4>
+              <p className="text-xs text-white/90 leading-tight mt-0.5 truncate">{formData.address || 'Society Address'}</p>
+              <p className="text-xs text-white/90 leading-tight mt-1 truncate">
                 ✉ {formData.contactEmail || 'member@mandovinagar.org'} &nbsp; 📞 {formData.contactPhone || '+91 98221 23456'}
               </p>
             </div>
@@ -183,7 +183,7 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
         <div className="pt-3 flex justify-end">
           <button
             type="submit"
-            className="py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center space-x-2 transition-all"
+            className="w-full sm:w-auto py-3 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all"
           >
             <Save className="w-4 h-4" />
             <span>Save Society Settings & Update User Side</span>

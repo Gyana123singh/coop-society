@@ -58,9 +58,51 @@ const ReceiptManager = ({ receipts, activeVendor, onOpenPDF, onDeleteReceipt }) 
         </div>
       </div>
 
-      {/* Receipts Table */}
+      {/* Receipts List */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        {/* Mobile View: Cards */}
+        <div className="md:hidden divide-y divide-slate-800">
+          {filteredReceipts.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 text-xs font-semibold">No receipt vouchers found.</div>
+          ) : (
+            filteredReceipts.map((r) => (
+              <div key={r._id} className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20 font-mono text-xs font-bold">
+                    #{r.receiptNo}
+                  </span>
+                  <span className="text-xs font-black text-emerald-400">
+                    ₹ {parseFloat(r.totalAmount || 0).toFixed(2)}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">{r.receivedFrom}</p>
+                  <p className="text-xs font-semibold text-indigo-400">{r.flatShopNo}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{r.date} · {r.paymentMode} ({r.cashChequeNo || 'N/A'})</p>
+                </div>
+                <div className="flex items-center justify-end space-x-2 pt-1 border-t border-slate-800/60">
+                  <button
+                    onClick={() => onOpenPDF(r)}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-400 text-xs font-bold flex items-center space-x-1"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1" />
+                    <span>View PDF</span>
+                  </button>
+                  <button
+                    onClick={() => onDeleteReceipt(r._id)}
+                    className="px-3 py-1.5 rounded-lg bg-rose-600/20 text-rose-400 text-xs font-bold flex items-center space-x-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs text-left text-slate-300">
             <thead className="bg-slate-950 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
               <tr>

@@ -7,10 +7,11 @@ import {
   Users,
   Settings,
   ShieldAlert,
-  LogOut
+  LogOut,
+  X
 } from 'lucide-react';
 
-const Sidebar = ({ activeView, onViewChange, userRole, onLogout }) => {
+const Sidebar = ({ activeView, onViewChange, userRole, onLogout, isMobileOpen, onCloseMobile }) => {
   const isSuperAdmin = userRole === 'SUPER_ADMIN';
 
   const menuItems = [
@@ -23,21 +24,31 @@ const Sidebar = ({ activeView, onViewChange, userRole, onLogout }) => {
   ];
 
   return (
-    <aside className="w-64 bg-[#090d16] border-r border-slate-800/80 flex flex-col justify-between shrink-0 min-h-screen text-slate-300">
+    <aside className={`w-64 bg-[#090d16] border-r border-slate-800/80 flex flex-col justify-between shrink-0 h-full min-h-screen text-slate-300 fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 ${isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}`}>
       <div>
         {/* Brand Header */}
-        <div className="p-5 border-b border-slate-800/80 flex items-center space-x-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-blue-600 p-[2px] flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/20">
-            <Building2 className="w-5 h-5 text-white" />
+        <div className="p-5 border-b border-slate-800/80 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-blue-600 p-[2px] flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/20">
+              <Building2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-white tracking-tight leading-tight">
+                Coop 365 Admin
+              </h1>
+              <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-widest">
+                {isSuperAdmin ? 'Super Admin Portal' : 'Society Portal'}
+              </span>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-bold text-white tracking-tight leading-tight">
-              Coop 365 Admin
-            </h1>
-            <span className="text-[10px] font-semibold text-indigo-400 uppercase tracking-widest">
-              {isSuperAdmin ? 'Super Admin Portal' : 'Society Portal'}
-            </span>
-          </div>
+
+          {/* Close button on mobile */}
+          <button 
+            onClick={onCloseMobile} 
+            className="md:hidden p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* System Role Badge */}

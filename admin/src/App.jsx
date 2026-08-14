@@ -244,6 +244,8 @@ const App = () => {
     return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   // Stats calculation
   const stats = {
     totalVendors: vendors.length,
@@ -254,27 +256,41 @@ const App = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0b0f19] text-slate-100 font-sans">
+    <div className="flex min-h-screen bg-[#0b0f19] text-slate-100 font-sans relative overflow-x-hidden">
+      {/* Mobile Drawer Overlay */}
+      {isMobileSidebarOpen && (
+        <div 
+          onClick={() => setIsMobileSidebarOpen(false)} 
+          className="fixed inset-0 bg-black/70 z-40 md:hidden backdrop-blur-xs transition-opacity" 
+        />
+      )}
+
       {/* Sidebar */}
       <Sidebar
         activeView={activeView}
-        onViewChange={setActiveView}
+        onViewChange={(view) => {
+          setActiveView(view);
+          setIsMobileSidebarOpen(false);
+        }}
         userRole={userRole}
         onLogout={handleLogout}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 w-full">
         {/* Top Header */}
         <TopHeader
           activeVendor={activeVendor}
           vendors={vendors}
           onVendorChange={setActiveVendor}
           userRole={userRole}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
 
         {/* View Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-6 overflow-y-auto">
           {activeView === 'dashboard' && userRole === 'SUPER_ADMIN' && (
             <SuperAdminDashboard
               stats={stats}

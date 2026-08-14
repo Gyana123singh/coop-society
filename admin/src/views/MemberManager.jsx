@@ -77,7 +77,7 @@ const MemberManager = ({ activeVendor }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">
             Society Members & Roles ({activeVendor?.name || 'Society'})
@@ -89,16 +89,50 @@ const MemberManager = ({ activeVendor }) => {
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center space-x-2 transition-all"
+          className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all shrink-0"
         >
           <UserPlus className="w-4 h-4" />
           <span>Add Member Profile</span>
         </button>
       </div>
 
-      {/* Members Table */}
+      {/* Members List */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+        {/* Mobile View: Cards */}
+        <div className="md:hidden divide-y divide-slate-800">
+          {members.map((m) => (
+            <div key={m._id} className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 rounded-full bg-indigo-600/20 text-indigo-400 font-bold flex items-center justify-center text-xs">
+                    {m.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">{m.name}</p>
+                    <span className="text-[10px] font-semibold text-slate-400">{m.role}</span>
+                  </div>
+                </div>
+                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>Authorized</span>
+                </span>
+              </div>
+              <div className="text-xs space-y-0.5 pt-1">
+                <p className="text-emerald-400 font-mono font-bold flex items-center">
+                  <Phone className="w-3 h-3 mr-1 text-emerald-400" />
+                  {m.phone || 'Not Specified'}
+                </p>
+                <p className="text-slate-400 flex items-center">
+                  <Mail className="w-3 h-3 mr-1 text-slate-400" />
+                  {m.email}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs text-left text-slate-300">
             <thead className="bg-slate-950 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
               <tr>

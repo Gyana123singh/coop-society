@@ -5,7 +5,7 @@ const SuperAdminDashboard = ({ stats, vendors, onOpenProvisionModal }) => {
   return (
     <div className="space-y-6">
       {/* Title & Action */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">
             Super Admin Platform Dashboard
@@ -17,7 +17,7 @@ const SuperAdminDashboard = ({ stats, vendors, onOpenProvisionModal }) => {
 
         <button
           onClick={onOpenProvisionModal}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center space-x-2 transition-all"
+          className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2 transition-all shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Provision New Tenant / Society</span>
