@@ -34,13 +34,19 @@ const OTPScreen = () => {
     try {
       let firebaseToken = null;
 
-      // 1. Verify via Firebase Auth SDK if active
+      // 1. Real-time Firebase Phone Auth Verification
       if (confirmationResult) {
         try {
           const verifiedUser = await verifyFirebasePhoneOTP(confirmationResult, otp);
           firebaseToken = verifiedUser.idToken;
+          console.log('[Firebase Real-time Verification Success]', verifiedUser.phoneNumber);
         } catch (fbErr) {
           console.warn('[Firebase SDK Verification Notice]', fbErr);
+          if (!location.state?.devOtpCode) {
+            setError('Invalid or expired Firebase SMS OTP code. Please check your SMS and try again.');
+            setLoading(false);
+            return;
+          }
         }
       }
 

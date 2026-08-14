@@ -1,31 +1,35 @@
-# Logs & Debug
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Dependencies (Root, Backend, Frontend, Admin)
+# Dependencies
 node_modules/
 **/node_modules/
 
 # Environment Variables & Secrets
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
-**/.env
-**/.env.local
+**/.env*
+!**/.env.example
 
 # Production Build Outputs
 dist/
 dist-ssr/
 build/
+out/
 **/dist/
 **/build/
+
+# Logs & Debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # IDE & Editor Settings
 .vscode/
@@ -35,12 +39,27 @@ build/
 *.sublime-project
 *.sublime-workspace
 .DS_Store
+.DS_Store?
 Thumbs.db
+ehthumbs.db
 
-# Cache & Temp directories
+# Cache & Temporary Directories
 .cache/
 .eslintcache
+.oxlintcache
 .vite/
 **/.vite/
 .temp/
 .tmp/
+*.tmp
+*.temp
+
+# Testing & Coverage Reports
+coverage/
+.nyc_output/
+
+# Certificates & Keys
+*.pem
+*.pub
+*.key
+*.crt
