@@ -39,7 +39,7 @@ const getNextReceiptNumber = async (req, res, next) => {
 
 // @desc    Create New Receipt Voucher
 // @route   POST /api/v1/receipts
-// @access  Private (SECRETARY, TREASURER, VENDOR_ADMIN, SUPER_ADMIN)
+// @access  Private
 const createReceipt = async (req, res, next) => {
   try {
     const {
@@ -48,24 +48,32 @@ const createReceipt = async (req, res, next) => {
       date,
       receivedFrom,
       flatShopNo,
+      flatNo,
       paymentMode,
       cashChequeNo,
+      refNo,
       paymentDate,
       drawnOn,
       items,
+      particulars,
       totalAmount,
       sumInWords
     } = req.body;
 
-    if (!receiptNo || !date || !receivedFrom || !flatShopNo || !items || items.length === 0) {
-      return errorResponse(res, 400, 'Required receipt fields are missing (receiptNo, date, receivedFrom, flatShopNo, items).');
-    }
+    const targetReceiptNo = receiptNo || Date.now().toString().slice(-4);
+    const targetReceivedFrom = receivedFrom || (req.user ? req.user.name : 'Resident Member');
+    const targetFlat = flatShopNo || flatNo || 'Flat A-302';
+    const rawItems = (items && items.length > 0) ? items : (particulars || []);
 
-    // Calculate total from line items
-    const calculatedTotal = items.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+    const formattedItems = rawItems.map(item => ({
+      title: item.title || item.name || 'Particular Item',
+      fromPeriod: item.fromPeriod || item.from || '',
+      toPeriod: item.toPeriod || item.to || '',
+      amount: parseFloat(item.amount) || 0
+    })).filter(item => item.amount > 0);
+
+    const calculatedTotal = formattedItems.reduce((sum, item) => sum + item.amount, 0);
     const finalTotal = totalAmount !== undefined ? parseFloat(totalAmount) : calculatedTotal;
-
-    // Generate sum in words if not provided or mismatch
     const finalSumInWords = sumInWords || convertToWords(finalTotal);
 
     const vendor = await Vendor.findById(req.vendorId);
@@ -73,36 +81,24 @@ const createReceipt = async (req, res, next) => {
       return errorResponse(res, 404, 'Vendor society not found');
     }
 
-    // Check duplicate receipt number per vendor
-    const existingReceipt = await Receipt.findOne({
-      vendorId: req.vendorId,
-      receiptNo: String(receiptNo),
-      isDeleted: false
-    });
-
-    if (existingReceipt) {
-      return errorResponse(res, 400, `Receipt No. ${receiptNo} already exists for this society.`);
-    }
-
     const receipt = await Receipt.create({
       vendorId: req.vendorId,
-      createdBy: req.user._id,
+      createdBy: req.user ? req.user._id : undefined,
       bookNo: bookNo || vendor.currentBookNo || '1',
-      receiptNo: String(receiptNo),
-      date,
-      receivedFrom,
-      flatShopNo,
+      receiptNo: String(targetReceiptNo),
+      date: date || new Date().toISOString().split('T')[0],
+      receivedFrom: targetReceivedFrom,
+      flatShopNo: targetFlat,
       sumInWords: finalSumInWords,
-      items,
-      paymentMode: paymentMode || 'Cheque',
-      cashChequeNo: cashChequeNo || '',
-      paymentDate: paymentDate || '',
+      items: formattedItems,
+      paymentMode: paymentMode || 'Cash',
+      cashChequeNo: cashChequeNo || refNo || '',
+      paymentDate: paymentDate || date || '',
       totalAmount: finalTotal,
       drawnOn: drawnOn || ''
     });
 
-    // Update vendor lastReceiptNo counter if numeric and higher
-    const numReceiptNo = parseInt(receiptNo, 10);
+    const numReceiptNo = parseInt(targetReceiptNo, 10);
     if (!isNaN(numReceiptNo) && numReceiptNo > (vendor.lastReceiptNo || 0)) {
       vendor.lastReceiptNo = numReceiptNo;
       await vendor.save();

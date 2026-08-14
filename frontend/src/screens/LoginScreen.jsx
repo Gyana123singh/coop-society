@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Phone, Building2, Flame, Loader2, ChevronDown, RefreshCw } from 'lucide-react';
 import axios from 'axios';
-import { initRecaptchaVerifier, sendFirebasePhoneOTP } from '../services/firebaseAuthService';
+import { sendFirebasePhoneOTP, initRecaptchaVerifier } from '../services/firebaseAuthService';
 
 const LoginScreen = () => {
   const [societies, setSocieties] = useState([]);
@@ -15,7 +15,7 @@ const LoginScreen = () => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // Fetch REAL active housing societies directly from MongoDB (Rafi, Gyana, etc.)
+  // Fetch active housing societies directly from MongoDB
   const fetchLiveSocieties = async () => {
     setLoadingSocieties(true);
     setError('');
@@ -39,6 +39,7 @@ const LoginScreen = () => {
 
   useEffect(() => {
     fetchLiveSocieties();
+    initRecaptchaVerifier('recaptcha-container');
   }, []);
 
   const handleSendOTP = async (e) => {
@@ -57,45 +58,25 @@ const LoginScreen = () => {
 
     const formattedPhone = cleanDigits.length === 10 ? `+91${cleanDigits}` : `+${cleanDigits}`;
     const targetSociety = societies.find(s => s._id === selectedSocietyId) || societies[0];
+    const societyName = targetSociety?.name || 'Housing Society';
 
     setError('');
     setLoading(true);
 
     try {
-      // 1. Verify Member Pre-Registration for the Selected Society in MongoDB
-      const res = await axios.post(`${API_URL}/api/v1/auth/send-otp`, {
-        phoneOrEmail: formattedPhone,
-        vendorId: selectedSocietyId
-      });
+      // Dispatch Firebase SMS OTP directly (No backend OTP generation/storage)
+      await sendFirebasePhoneOTP(formattedPhone);
 
-      let confirmationResult = null;
-      let societyName = targetSociety?.name || 'Housing Society';
-      let devOtpCode = undefined;
-
-      if (res.data?.success) {
-        societyName = res.data.data.societyName || societyName;
-        devOtpCode = res.data.data.devOtpCode;
-
-        // 2. Dispatch REAL Firebase SMS OTP to physical phone
-        try {
-          await initRecaptchaVerifier('recaptcha-container');
-          confirmationResult = await sendFirebasePhoneOTP(formattedPhone);
-        } catch (fbErr) {
-          console.warn('[Firebase Auth SDK Notice]', fbErr);
+      navigate('/otp', {
+        state: {
+          phone: formattedPhone,
+          societyId: selectedSocietyId,
+          societyName
         }
-
-        navigate('/otp', {
-          state: {
-            phone: formattedPhone,
-            societyId: selectedSocietyId,
-            societyName,
-            hasFirebaseSession: !!confirmationResult,
-            devOtpCode
-          }
-        });
-      }
+      });
     } catch (err) {
-      const errorMsg = err.response?.data?.message || err.message;
+      console.error('[Firebase SMS Error]', err);
+      const errorMsg = err.message || 'Firebase SMS OTP dispatch failed. Please check your mobile number and retry.';
       setError(errorMsg);
     } finally {
       setLoading(false);
@@ -109,7 +90,7 @@ const LoginScreen = () => {
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center p-4">
-      {/* Invisible Recaptcha Container */}
+      {/* Invisible Firebase Recaptcha verifier container */}
       <div id="recaptcha-container"></div>
 
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 font-sans">
@@ -119,7 +100,7 @@ const LoginScreen = () => {
           <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-white/5 blur-2xl"></div>
           <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 rounded-full bg-[#5a32fa]/20 blur-xl"></div>
 
-          <div className="w-16 h-16 rounded-full flex items-center justify-center p-1 bg-white mx-auto mb-[#3 text-center relative z-10 font-sans shadow-lg flex justify-center">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center p-1 bg-white mx-auto mb-3 relative z-10 font-sans shadow-lg">
             <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 via-red-500 to-yellow-400"></div>
           </div>
           <h1 className="text-2xl font-bold text-white relative z-10">Coop 365</h1>

@@ -10,9 +10,9 @@ const OTPScreen = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const phone = location.state?.phone;
+  const societyId = location.state?.societyId;
   const societyName = location.state?.societyName || 'Housing Society';
-  const hasFirebaseSession = location.state?.hasFirebaseSession;
-  const activeConfirmationResult = window.confirmationResult;
+  const confirmationResult = location.state?.confirmationResult || window.confirmationResult;
 
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,39 +33,42 @@ const OTPScreen = () => {
     setError('');
 
     try {
-      let firebaseToken = null;
-
-      // 1. Real-time Firebase Phone Auth Verification
-      if (hasFirebaseSession || activeConfirmationResult) {
-        try {
-          const verifiedUser = await verifyFirebasePhoneOTP(activeConfirmationResult, otp);
-          firebaseToken = verifiedUser.idToken;
-          console.log('[Firebase Real-time Verification Success]', verifiedUser.phoneNumber);
-        } catch (fbErr) {
-          console.warn('[Firebase SDK Verification Notice]', fbErr);
-          if (!location.state?.devOtpCode) {
-            setError('Invalid or expired Firebase SMS OTP code. Please check your SMS and try again.');
-            setLoading(false);
-            return;
-          }
-        }
+      // 1. Verify 6-digit OTP code directly using Firebase Phone Auth confirmationResult
+      const verifiedUser = await verifyFirebasePhoneOTP(confirmationResult, otp);
+      
+      if (!verifiedUser?.idToken) {
+        throw new Error('Failed to retrieve Firebase ID token after verification.');
       }
 
-      // 2. Call backend verification endpoint
+      const idToken = verifiedUser.idToken;
+
+      // 2. Exchange verified Firebase ID token with backend endpoint POST /api/v1/auth/firebase-login
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const res = await axios.post(`${API_URL}/api/v1/auth/verify-otp`, {
-        phoneOrEmail: phone,
-        otpCode: otp,
-        idToken: firebaseToken
+      const res = await axios.post(`${API_URL}/api/v1/auth/firebase-login`, {
+        idToken,
+        vendorId: societyId,
+        phoneNumber: phone
       });
 
       if (res.data?.success) {
         const { token, user } = res.data.data;
         login(user, token);
         navigate('/form');
+      } else {
+        throw new Error(res.data?.message || 'Backend authentication failed.');
       }
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Invalid SMS OTP code. Access Denied.';
+      console.error('[OTP Verification Error]', err);
+      let errorMsg = 'Invalid or expired SMS OTP code. Please check and try again.';
+      if (err.code === 'auth/invalid-verification-code') {
+        errorMsg = 'Invalid SMS OTP code. Please check the code received on your phone.';
+      } else if (err.code === 'auth/code-expired') {
+        errorMsg = 'SMS OTP code has expired. Please return to login to request a new code.';
+      } else if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
       setError(errorMsg);
     } finally {
       setLoading(false);

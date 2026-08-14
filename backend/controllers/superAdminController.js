@@ -146,7 +146,7 @@ const getVendorById = async (req, res, next) => {
 // @access  Private (SUPER_ADMIN)
 const updateVendor = async (req, res, next) => {
   try {
-    const { name, address, regNo, authorisedSignature, contactEmail, contactPhone, status } = req.body;
+    const { name, address, regNo, authorisedSignature, contactEmail, contactPhone, currentBookNo, lastReceiptNo, logoUrl, status } = req.body;
 
     const vendor = await Vendor.findById(req.params.id);
     if (!vendor) {
@@ -157,8 +157,11 @@ const updateVendor = async (req, res, next) => {
     if (address) vendor.address = address;
     if (regNo) vendor.regNo = regNo;
     if (authorisedSignature) vendor.authorisedSignature = authorisedSignature;
-    if (contactEmail) vendor.contactEmail = contactEmail;
-    if (contactPhone) vendor.contactPhone = contactPhone;
+    if (contactEmail !== undefined) vendor.contactEmail = contactEmail;
+    if (contactPhone !== undefined) vendor.contactPhone = contactPhone;
+    if (currentBookNo !== undefined) vendor.currentBookNo = currentBookNo;
+    if (lastReceiptNo !== undefined) vendor.lastReceiptNo = lastReceiptNo;
+    if (logoUrl !== undefined) vendor.logoUrl = logoUrl;
     if (status) vendor.status = status;
 
     await vendor.save();

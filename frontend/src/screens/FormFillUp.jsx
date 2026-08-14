@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, RotateCcw, Save, FileText, User, Home, Volume2, Building2 } from 'lucide-react';
+import { PlusCircle, RotateCcw, Save, FileText, User, Home, Volume2, Building2, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
 const initialParticulars = [
   { id: 1, name: "Maintenance Charges", from: "", to: "", amount: "" },
@@ -30,6 +31,31 @@ const FormFillUp = () => {
   });
 
   const [particulars, setParticulars] = useState(initialParticulars);
+  const [loadingSave, setLoadingSave] = useState(false);
+
+  // Fetch next receipt number sequence from backend MongoDB
+  const fetchNextReceiptNo = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const token = localStorage.getItem('coop365_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const res = await axios.get(`${API_URL}/api/v1/receipts/next-number`, { headers });
+      if (res.data?.success && res.data.data) {
+        setFormData(prev => ({
+          ...prev,
+          bookNo: res.data.data.bookNo || prev.bookNo,
+          receiptNo: res.data.data.nextReceiptNo || prev.receiptNo
+        }));
+      }
+    } catch (err) {
+      console.warn('[FormFillUp] API fetch next receipt number notice:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchNextReceiptNo();
+  }, []);
 
   const handleParticularChange = (id, field, value) => {
     setParticulars(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
@@ -42,11 +68,65 @@ const FormFillUp = () => {
 
   const totalAmount = particulars.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const validParticulars = particulars.filter(p => p.amount && parseFloat(p.amount) > 0);
+    if (validParticulars.length === 0) {
+      alert('Please enter at least one line item / amount under Particulars.');
+      return;
+    }
+
+    setLoadingSave(true);
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const token = localStorage.getItem('coop365_token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const payload = {
+      bookNo: formData.bookNo,
+      receiptNo: formData.receiptNo,
+      date: formData.date,
+      receivedFrom: formData.receivedFrom || residentDetails.name,
+      flatShopNo: formData.flatNo || residentDetails.flatNo,
+      paymentMode: formData.paymentMode,
+      cashChequeNo: formData.refNo,
+      paymentDate: formData.paymentDate,
+      drawnOn: formData.drawnOn,
+      sumInWords: formData.sumInWords,
+      totalAmount,
+      items: validParticulars.map(p => ({
+        title: p.name || 'Particular Item',
+        fromPeriod: p.from,
+        toPeriod: p.to,
+        amount: parseFloat(p.amount) || 0
+      }))
+    };
+
+    try {
+      const res = await axios.post(`${API_URL}/api/v1/receipts`, payload, { headers });
+      if (res.data?.success) {
+        const savedReceipt = res.data.data.receipt;
+        addReceipt({
+          id: savedReceipt._id || Date.now(),
+          _id: savedReceipt._id,
+          ...formData,
+          particulars: validParticulars,
+          totalAmount,
+          items: savedReceipt.items
+        });
+        alert(`Receipt Voucher #${savedReceipt.receiptNo} created & stored in MongoDB database successfully!`);
+        navigate('/history');
+        return;
+      }
+    } catch (err) {
+      console.warn('[FormFillUp] API post notice, caching receipt locally:', err?.response?.data || err.message);
+    } finally {
+      setLoadingSave(false);
+    }
+
+    // Local fallback save
     const receiptData = {
-      id: Date.now(),
+      id: `rcpt_${Date.now()}`,
       ...formData,
-      particulars: particulars.filter(p => p.amount && parseFloat(p.amount) > 0),
+      particulars: validParticulars,
       totalAmount,
     };
     addReceipt(receiptData);
@@ -108,7 +188,7 @@ const FormFillUp = () => {
             <h2 className="text-base md:text-lg font-bold leading-tight mb-1.5">{residentDetails.societyName}</h2>
             <p className="text-xs md:text-sm text-white/90 leading-tight mb-1">{residentDetails.address}</p>
             <p className="text-xs md:text-sm text-white/90 leading-tight">
-              ✉ {residentDetails.email} &nbsp; 📞 +91 98221 23456
+              ✉ {residentDetails.email} &nbsp; 📞 {residentDetails.phone || '+91 98221 23456'}
             </p>
           </div>
         </div>
@@ -234,20 +314,36 @@ const FormFillUp = () => {
               <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide">Total Receipt Amount</p>
               <p className="text-2xl font-bold">₹ {totalAmount.toFixed(2)}</p>
             </div>
-            <button className="bg-[#5a32fa] hover:bg-[#4826d1] text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center transition-colors">
+            <button 
+              onClick={handleSave} 
+              disabled={loadingSave}
+              className="bg-[#5a32fa] hover:bg-[#4826d1] text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center transition-colors disabled:opacity-60"
+            >
               <FileText size={18} className="mr-2" />
               PDF Preview
             </button>
           </div>
 
           <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pb-24 md:pb-0">
-            <button onClick={handleReset} className="w-full sm:w-auto sm:flex-[0.8] py-4 bg-white border border-gray-300 rounded-xl text-gray-600 font-semibold flex items-center justify-center hover:bg-gray-50 transition-colors text-base">
+            <button 
+              onClick={handleReset} 
+              disabled={loadingSave}
+              className="w-full sm:w-auto sm:flex-[0.8] py-4 bg-white border border-gray-300 rounded-xl text-gray-600 font-semibold flex items-center justify-center hover:bg-gray-50 transition-colors text-base disabled:opacity-50"
+            >
               <RotateCcw size={18} className="mr-2" />
               Reset Form
             </button>
-            <button onClick={handleSave} className="w-full sm:w-auto sm:flex-1 py-4 bg-[#5a32fa] text-white rounded-xl font-semibold flex items-center justify-center hover:bg-[#4826d1] transition-colors shadow-lg shadow-[#5a32fa]/30 text-base">
-              <Save size={18} className="mr-2" />
-              Save & Store Receipt
+            <button 
+              onClick={handleSave} 
+              disabled={loadingSave}
+              className="w-full sm:w-auto sm:flex-1 py-4 bg-[#5a32fa] text-white rounded-xl font-semibold flex items-center justify-center hover:bg-[#4826d1] transition-colors shadow-lg shadow-[#5a32fa]/30 text-base disabled:opacity-50"
+            >
+              {loadingSave ? (
+                <Loader2 size={20} className="animate-spin mr-2" />
+              ) : (
+                <Save size={18} className="mr-2" />
+              )}
+              <span>{loadingSave ? 'Saving to Database...' : 'Save & Store Receipt'}</span>
             </button>
           </div>
         </div>

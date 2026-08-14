@@ -22,7 +22,7 @@ const getVendorProfile = async (req, res, next) => {
 // @access  Private (VENDOR_ADMIN, SECRETARY)
 const updateVendorProfile = async (req, res, next) => {
   try {
-    const { name, address, regNo, authorisedSignature, logoUrl, currentBookNo } = req.body;
+    const { name, address, regNo, authorisedSignature, logoUrl, currentBookNo, lastReceiptNo, contactEmail, contactPhone } = req.body;
     const vendor = await Vendor.findById(req.vendorId);
     if (!vendor) {
       return errorResponse(res, 404, 'Vendor society profile not found');
@@ -34,6 +34,9 @@ const updateVendorProfile = async (req, res, next) => {
     if (authorisedSignature) vendor.authorisedSignature = authorisedSignature;
     if (logoUrl !== undefined) vendor.logoUrl = logoUrl;
     if (currentBookNo) vendor.currentBookNo = currentBookNo;
+    if (lastReceiptNo !== undefined) vendor.lastReceiptNo = lastReceiptNo;
+    if (contactEmail !== undefined) vendor.contactEmail = contactEmail;
+    if (contactPhone !== undefined) vendor.contactPhone = contactPhone;
 
     await vendor.save();
     return successResponse(res, 200, 'Vendor profile updated successfully', { vendor });

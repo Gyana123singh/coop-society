@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Vendor = require('../models/Vendor');
-const OTP = require('../models/OTP');
+const firebaseAdmin = require('../config/firebaseAdmin');
 const config = require('../config/config');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 
@@ -64,33 +64,56 @@ const getPublicVendors = async (req, res, next) => {
   }
 };
 
-// @desc    Firebase Phone Authentication OTP Verification & Member Login
-// @route   POST /api/v1/auth/firebase-otp
+// @desc    Firebase Phone Authentication ID Token Verification & Member Login
+// @route   POST /api/v1/auth/firebase-login (or /api/v1/auth/firebase-otp)
 // @access  Public
-const firebaseOTPLogin = async (req, res, next) => {
+const firebaseLogin = async (req, res, next) => {
   try {
-    const { phoneNumber, idToken } = req.body;
+    const { idToken, vendorId, phoneNumber } = req.body;
 
-    if (!phoneNumber) {
-      return errorResponse(res, 400, 'Mobile phone number is required.');
+    if (!idToken) {
+      return errorResponse(res, 400, 'Firebase ID token is required.');
     }
 
-    const normalizedPhone = phoneNumber.trim();
+    let decodedToken;
+    try {
+      decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+      console.log('[Firebase Auth] ID token verified');
+    } catch (authErr) {
+      console.error('[Firebase Auth Error] Failed to verify ID token:', authErr.message);
+      return errorResponse(res, 401, 'Invalid or expired Firebase authentication token.');
+    }
+
+    const rawPhone = decodedToken.phone_number || phoneNumber;
+    if (!rawPhone) {
+      return errorResponse(res, 400, 'Mobile phone number not found in Firebase token.');
+    }
+
+    const normalizedPhone = rawPhone.trim();
+    console.log(`[Firebase Auth] Phone number: ${normalizedPhone}`);
+
     const phoneDigits = extractPhoneDigits(normalizedPhone);
 
     const searchConditions = [
       { email: normalizedPhone.toLowerCase() },
       { phone: normalizedPhone }
     ];
-    if (phoneDigits) {
+    if (phoneDigits && phoneDigits.length >= 7) {
       searchConditions.push({ phone: { $regex: phoneDigits + '$' } });
+      searchConditions.push({ email: { $regex: phoneDigits + '$' } });
     }
 
     let registeredUser = await User.findOne({ $or: searchConditions }).populate('vendorId');
 
     // Auto-onboard new mobile number if not yet saved in MongoDB
     if (!registeredUser) {
-      let activeVendor = await Vendor.findOne({ status: 'ACTIVE' });
+      let activeVendor = null;
+      if (vendorId) {
+        activeVendor = await Vendor.findById(vendorId);
+      }
+      if (!activeVendor) {
+        activeVendor = await Vendor.findOne({ status: 'ACTIVE' });
+      }
       if (!activeVendor) {
         activeVendor = await Vendor.create({
           name: 'Mandovi Nagar Co-Op. Housing Society Ltd.,',
@@ -113,7 +136,9 @@ const firebaseOTPLogin = async (req, res, next) => {
     const society = registeredUser.vendorId;
     const token = generateToken(registeredUser);
 
-    return successResponse(res, 200, `Firebase Phone OTP Verified. Authenticated into ${society?.name || 'Society'}.`, {
+    console.log(`[Firebase Auth] Member authenticated successfully: ${registeredUser.name}`);
+
+    return successResponse(res, 200, `Firebase Phone Auth Verified. Authenticated into ${society?.name || 'Society'}.`, {
       token,
       user: {
         id: registeredUser._id,
@@ -163,168 +188,6 @@ const login = async (req, res, next) => {
     return successResponse(res, 200, 'Login successful', {
       token,
       user: userObj
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// @desc    Request Direct 6-Digit OTP (Supports Instant Member Onboarding for New Numbers)
-// @route   POST /api/v1/auth/send-otp
-// @access  Public
-const sendOTP = async (req, res, next) => {
-  try {
-    const { phoneOrEmail } = req.body;
-
-    if (!phoneOrEmail) {
-      return errorResponse(res, 400, 'Phone number or Email address is required.');
-    }
-
-    const normalizedIdentifier = phoneOrEmail.trim();
-    const phoneDigits = extractPhoneDigits(normalizedIdentifier);
-
-    // Build flexible phone and email matching conditions
-    const searchConditions = [
-      { email: normalizedIdentifier.toLowerCase() },
-      { phone: normalizedIdentifier }
-    ];
-
-    if (phoneDigits && phoneDigits.length >= 7) {
-      searchConditions.push({ phone: { $regex: phoneDigits + '$' } });
-      searchConditions.push({ email: { $regex: phoneDigits + '$' } });
-    }
-
-    // 1. ADMIN REGISTRATION CHECK: Lookup user in database
-    let registeredUser = await User.findOne({ $or: searchConditions }).populate('vendorId');
-
-    // AUTO-REGISTER NEW MOBILE NUMBERS TO DEFAULT ACTIVE SOCIETY IF NOT PREVIOUSLY SAVED
-    if (!registeredUser) {
-      let activeVendor = await Vendor.findOne({ status: 'ACTIVE' });
-      if (!activeVendor) {
-        activeVendor = await Vendor.create({
-          name: 'Mandovi Nagar Co-Op. Housing Society Ltd.,',
-          address: 'Porvorim, Alto Porvorim, Goa 403521',
-          regNo: 'HSG-(a)-70/GOA',
-          status: 'ACTIVE'
-        });
-      }
-
-      registeredUser = await User.create({
-        name: `Member (${normalizedIdentifier})`,
-        email: `${phoneDigits || Date.now()}@mandovinagar.org`,
-        phone: normalizedIdentifier,
-        role: 'MEMBER',
-        vendorId: activeVendor._id
-      });
-      registeredUser = await User.findById(registeredUser._id).populate('vendorId');
-    }
-
-    const society = registeredUser.vendorId;
-    const targetVendorId = society._id;
-
-    // Generate 6-digit numeric OTP code
-    const generatedOTP = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Remove any previous pending OTP for this identifier and tenant
-    await OTP.deleteMany({ phoneOrEmail: normalizedIdentifier.toLowerCase(), vendorId: targetVendorId });
-
-    // Store new OTP with 5-minute auto-expiry TTL
-    await OTP.create({
-      phoneOrEmail: normalizedIdentifier.toLowerCase(),
-      otpCode: generatedOTP,
-      vendorId: targetVendorId
-    });
-
-    console.log(`[OTP Gateway] Dispatched 6-digit OTP ${generatedOTP} for ${registeredUser.name} (${normalizedIdentifier}) -> Society: ${society.name}`);
-
-    return successResponse(res, 200, '6-Digit OTP sent successfully.', {
-      phoneOrEmail: normalizedIdentifier,
-      vendorId: targetVendorId,
-      memberName: registeredUser.name,
-      societyName: society.name,
-      societyRegNo: society.regNo,
-      devOtpCode: config.env === 'development' ? generatedOTP : undefined
-    });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// @desc    Verify OTP & Direct Login to Registered Housing Society
-// @route   POST /api/v1/auth/verify-otp
-// @access  Public
-const verifyOTP = async (req, res, next) => {
-  try {
-    const { phoneOrEmail, otpCode } = req.body;
-
-    if (!phoneOrEmail || !otpCode) {
-      return errorResponse(res, 400, 'Phone/Email and OTP code are required.');
-    }
-
-    const normalizedIdentifier = phoneOrEmail.trim();
-    const phoneDigits = extractPhoneDigits(normalizedIdentifier);
-
-    // Check active OTP entry
-    const otpRecord = await OTP.findOne({
-      phoneOrEmail: normalizedIdentifier.toLowerCase(),
-      otpCode
-    });
-
-    if (!otpRecord) {
-      return errorResponse(res, 400, 'Invalid or expired OTP code. Please request a new OTP.');
-    }
-
-    const searchConditions = [
-      { email: normalizedIdentifier.toLowerCase() },
-      { phone: normalizedIdentifier }
-    ];
-
-    if (phoneDigits && phoneDigits.length >= 7) {
-      searchConditions.push({ phone: { $regex: phoneDigits + '$' } });
-    }
-
-    // Retrieve registered user by Phone or Email
-    let user = await User.findOne({ $or: searchConditions }).populate('vendorId');
-
-    if (!user) {
-      let activeVendor = await Vendor.findOne({ status: 'ACTIVE' });
-      if (!activeVendor) {
-        activeVendor = await Vendor.create({
-          name: 'Mandovi Nagar Co-Op. Housing Society Ltd.,',
-          address: 'Porvorim, Alto Porvorim, Goa 403521',
-          regNo: 'HSG-(a)-70/GOA',
-          status: 'ACTIVE'
-        });
-      }
-
-      user = await User.create({
-        name: `Member (${normalizedIdentifier})`,
-        email: `${phoneDigits || Date.now()}@mandovinagar.org`,
-        phone: normalizedIdentifier,
-        role: 'MEMBER',
-        vendorId: activeVendor._id
-      });
-      user = await User.findById(user._id).populate('vendorId');
-    }
-
-    // Delete used OTP
-    await OTP.deleteOne({ _id: otpRecord._id });
-
-    // Issue JWT token with embedded userId, role, and vendorId
-    const token = generateToken(user);
-
-    return successResponse(res, 200, `OTP verified. Direct login to ${user.vendorId?.name || 'Society'}.`, {
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        vendorId: user.vendorId?._id,
-        vendorName: user.vendorId?.name,
-        vendorRegNo: user.vendorId?.regNo
-      }
     });
   } catch (err) {
     next(err);
@@ -407,12 +270,36 @@ const getMe = async (req, res, next) => {
   }
 };
 
+// @desc    Update Current User Profile (Name, Email, Phone)
+// @route   PUT /api/v1/auth/me
+// @access  Private
+const updateMe = async (req, res, next) => {
+  try {
+    const { name, email, phone } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return errorResponse(res, 404, 'User not found.');
+    }
+
+    if (name) user.name = name;
+    if (email) user.email = email.toLowerCase().trim();
+    if (phone) user.phone = phone.trim();
+
+    await user.save();
+    const updatedUser = await User.findById(user._id).populate('vendorId');
+
+    return successResponse(res, 200, 'User profile updated successfully', { user: updatedUser });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getPublicVendors,
-  firebaseOTPLogin,
+  firebaseLogin,
+  firebaseOTPLogin: firebaseLogin,
   login,
-  sendOTP,
-  verifyOTP,
   googleSignIn,
-  getMe
+  getMe,
+  updateMe
 };

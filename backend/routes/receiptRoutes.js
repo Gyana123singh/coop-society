@@ -18,9 +18,9 @@ router.use(enforceTenant);
 
 router.get('/next-number', getNextReceiptNumber);
 router.get('/', getReceipts);
-router.post('/', authorize('SUPER_ADMIN', 'VENDOR_ADMIN', 'SECRETARY', 'TREASURER'), createReceipt);
+router.post('/', authorize('SUPER_ADMIN', 'VENDOR_ADMIN', 'SECRETARY', 'TREASURER', 'MEMBER'), createReceipt);
 router.get('/:id', getReceiptById);
-router.put('/:id', authorize('SUPER_ADMIN', 'VENDOR_ADMIN', 'SECRETARY', 'TREASURER'), updateReceipt);
+router.put('/:id', authorize('SUPER_ADMIN', 'VENDOR_ADMIN', 'SECRETARY', 'TREASURER', 'MEMBER'), updateReceipt);
 router.delete('/:id', authorize('SUPER_ADMIN', 'VENDOR_ADMIN', 'SECRETARY', 'TREASURER'), deleteReceipt);
 router.get('/:id/pdf', downloadReceiptPDF);
 
