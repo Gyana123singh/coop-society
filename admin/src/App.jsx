@@ -116,9 +116,47 @@ const App = () => {
     }
   };
 
+  // Fetch Receipts from backend MongoDB Database live
+  const fetchReceiptsFromBackend = async () => {
+    try {
+      const token = localStorage.getItem('coop365_admin_token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const vendorQuery = activeVendor?._id ? `?vendorId=${activeVendor._id}` : '';
+      const res = await axios.get(`/api/v1/receipts${vendorQuery}`, { headers });
+      
+      if (res.data?.success && res.data.data?.receipts) {
+        const fetchedReceipts = res.data.data.receipts.map(r => ({
+          _id: r._id,
+          receiptNo: r.receiptNo,
+          bookNo: r.bookNo || '1',
+          date: r.date,
+          receivedFrom: r.receivedFrom,
+          flatShopNo: r.flatShopNo,
+          paymentMode: r.paymentMode,
+          cashChequeNo: r.cashChequeNo,
+          paymentDate: r.paymentDate,
+          drawnOn: r.drawnOn,
+          totalAmount: r.totalAmount,
+          sumInWords: r.sumInWords,
+          items: r.items ? r.items.map(it => ({
+            title: it.title,
+            fromPeriod: it.fromPeriod,
+            toPeriod: it.toPeriod,
+            amount: it.amount
+          })) : []
+        }));
+        setReceipts(fetchedReceipts);
+      }
+    } catch (err) {
+      console.warn('Receipts API fetch notice:', err.message);
+    }
+  };
+
   useEffect(() => {
     fetchVendorsFromBackend();
-  }, [adminUser]);
+    fetchReceiptsFromBackend();
+  }, [adminUser, activeVendor]);
 
   // Save vendors to localStorage whenever updated
   const updateVendorsState = (newVendorsList) => {
@@ -232,10 +270,19 @@ const App = () => {
     }
   };
 
-  // Delete Receipt Handler
-  const handleDeleteReceipt = (receiptId) => {
-    if (window.confirm('Are you sure you want to delete this receipt voucher?')) {
-      setReceipts(receipts.filter(r => r._id !== receiptId));
+  // Delete Receipt Handler with API connection
+  const handleDeleteReceipt = async (receiptId) => {
+    if (window.confirm('Are you sure you want to delete this receipt voucher from database?')) {
+      try {
+        const token = localStorage.getItem('coop365_admin_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        await axios.delete(`/api/v1/receipts/${receiptId}`, { headers });
+        alert('Receipt voucher deleted successfully from MongoDB database.');
+        fetchReceiptsFromBackend();
+      } catch (err) {
+        console.warn('Backend DELETE receipt failed, removing from local state:', err);
+        setReceipts(receipts.filter(r => r._id !== receiptId));
+      }
     }
   };
 
@@ -312,13 +359,21 @@ const App = () => {
             <ReceiptManager
               receipts={receipts}
               activeVendor={activeVendor}
-              onOpenPDF={(rcpt) => alert(`Opening PDF Voucher for Receipt #${rcpt.receiptNo}`)}
+              onRefreshReceipts={fetchReceiptsFromBackend}
+              onOpenPDF={(rcpt) => {
+                const token = localStorage.getItem('coop365_admin_token');
+                if (rcpt._id && typeof rcpt._id === 'string' && rcpt._id.length > 10) {
+                  window.open(`/api/v1/receipts/${rcpt._id}/pdf?token=${token}`, '_blank');
+                } else {
+                  alert(`Opening PDF Voucher for Receipt #${rcpt.receiptNo}`);
+                }
+              }}
               onDeleteReceipt={handleDeleteReceipt}
             />
           )}
 
           {activeView === 'reports' && (
-            <FinancialReports activeVendor={activeVendor} />
+            <FinancialReports activeVendor={activeVendor} receipts={receipts} />
           )}
 
           {activeView === 'members' && (

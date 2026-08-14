@@ -1,15 +1,25 @@
 import React, { useState } from 'react';
-import { FileText, Search, Plus, Filter, Download, Trash2, Eye } from 'lucide-react';
+import { FileText, Search, Plus, Filter, Download, Trash2, Eye, RefreshCw } from 'lucide-react';
 
-const ReceiptManager = ({ receipts, activeVendor, onOpenPDF, onDeleteReceipt }) => {
+const ReceiptManager = ({ receipts, activeVendor, onOpenPDF, onDeleteReceipt, onRefreshReceipts }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [paymentModeFilter, setPaymentModeFilter] = useState('ALL');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (onRefreshReceipts) await onRefreshReceipts();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const filteredReceipts = receipts.filter(r => {
     const matchesSearch = 
-      r.receivedFrom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.flatShopNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.receiptNo.includes(searchTerm);
+      (r.receivedFrom && r.receivedFrom.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (r.flatShopNo && r.flatShopNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (r.receiptNo && String(r.receiptNo).includes(searchTerm));
 
     const matchesMode = paymentModeFilter === 'ALL' || r.paymentMode === paymentModeFilter;
     return matchesSearch && matchesMode;
@@ -18,15 +28,24 @@ const ReceiptManager = ({ receipts, activeVendor, onOpenPDF, onDeleteReceipt }) 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight">
             Receipt Voucher Manager ({activeVendor?.name || 'Society'})
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Audit, issue, and manage official society collection vouchers.
+            Audit, issue, and manage official society collection vouchers stored in database.
           </p>
         </div>
+
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="w-full sm:w-auto bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-400 text-xs font-bold py-2.5 px-4 rounded-xl flex items-center justify-center space-x-2 transition-all shrink-0"
+        >
+          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          <span>Sync API Receipts</span>
+        </button>
       </div>
 
       {/* Filter & Search Bar */}

@@ -121,9 +121,12 @@ const getReceipts = async (req, res, next) => {
     const { search, startDate, endDate, flatShopNo, paymentMode } = req.query;
 
     const query = { 
-      vendorId: req.vendorId,
       isDeleted: false 
     };
+
+    if (req.vendorId) {
+      query.vendorId = req.vendorId;
+    }
 
     if (flatShopNo) {
       query.flatShopNo = { $regex: flatShopNo, $options: 'i' };
