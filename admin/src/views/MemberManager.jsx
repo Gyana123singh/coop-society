@@ -193,7 +193,11 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
           return;
         }
       } catch (err) {
-        console.warn('API POST failed, persisting member in memory:', err);
+        const errMsg = err.response?.data?.message || err.message;
+        console.warn('API POST failed:', errMsg);
+        if (err.response?.data?.message) {
+          alert(`Server Database Notice: ${err.response.data.message}`);
+        }
       }
 
       const addedObj = {
