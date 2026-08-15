@@ -16,6 +16,7 @@ const receiptRoutes = require('./routes/receiptRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // 1. Database Connection & Seed Data Execution
 connectDB().then(async () => {
