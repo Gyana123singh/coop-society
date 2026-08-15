@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, ShieldCheck, X, Phone, Mail, Home, Search, Eye, Edit2, Trash2, CheckCircle2, UserCheck, Shield, FileText, CreditCard, Upload } from 'lucide-react';
+import { Users, UserPlus, ShieldCheck, X, Phone, Mail, Home, Search, Eye, Edit2, Trash2, CheckCircle2, UserCheck, Shield, FileText, CreditCard, Upload, KeyRound } from 'lucide-react';
 import axios from 'axios';
 
 const initialTestMembers = [
@@ -120,8 +120,8 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
 
   const handleSaveMember = async (e) => {
     e.preventDefault();
-    if (!formData.name || (!formData.phone && !formData.email)) {
-      alert('Please enter Member Name and at least a Mobile Number or Email Address.');
+    if (!formData.name || !formData.flatNo || !formData.email || (!editingMember && !formData.password)) {
+      alert('Please fill all required fields: Member Name, Flat Number, Email Address, and Login Password.');
       return;
     }
 
@@ -133,7 +133,7 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
         try {
           const token = localStorage.getItem('coop365_admin_token');
           const headers = token ? { Authorization: `Bearer ${token}` } : {};
-          await axios.put(`/api/v1/vendors/users/${editingMember._id}`, {
+          const updatePayload = {
             name: formData.name,
             phone: formData.phone.trim(),
             email: formData.email.trim(),
@@ -142,7 +142,11 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
             panDocUrl: formData.panDocUrl,
             role: formData.role,
             status: formData.status
-          }, { headers });
+          };
+          if (formData.password) {
+            updatePayload.password = formData.password;
+          }
+          await axios.put(`/api/v1/vendors/users/${editingMember._id}`, updatePayload, { headers });
         } catch (err) {
           console.warn('API PUT member failed, updating local state:', err);
         }
@@ -156,17 +160,18 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
         flatNo: formData.flatNo,
         panNo: formData.panNo ? formData.panNo.toUpperCase().trim() : '',
         panDocUrl: formData.panDocUrl,
+        password: formData.password || m.password || 'Password123!',
         role: formData.role,
         status: formData.status
       } : m);
       saveMembersToCache(updatedList);
-      alert(`Updated details for ${formData.name}`);
+      alert(`Updated details and credentials for ${formData.name}`);
     } else {
       // Add New Member to MongoDB Database
       const payload = {
         name: formData.name,
         phone: formData.phone.trim(),
-        email: formData.email ? formData.email.toLowerCase().trim() : `${formData.phone.replace(/\D/g, '')}@society.org`,
+        email: formData.email.toLowerCase().trim(),
         flatNo: formData.flatNo,
         panNo: formData.panNo ? formData.panNo.toUpperCase().trim() : '',
         panDocUrl: formData.panDocUrl,
@@ -181,7 +186,7 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         const res = await axios.post('/api/v1/vendors/users', payload, { headers });
         if (res.data?.success && res.data.data?.user) {
-          updatedList = [res.data.data.user, ...members];
+          updatedList = [{ ...res.data.data.user, password: payload.password }, ...members];
           saveMembersToCache(updatedList);
           alert(`Registered new member ${formData.name} in MongoDB database!`);
           setIsModalOpen(false);
@@ -254,7 +259,7 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
             <span>Society Members & Roles ({activeVendor?.name || 'Society'})</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Complete management of resident user details, flat numbers, roles, and OTP authentication access.
+            Complete management of resident user details, flat numbers, roles, and email & password login credentials.
           </p>
         </div>
 
@@ -419,7 +424,7 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
                   <td className="p-4">
                     <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>OTP Authorized</span>
+                      <span>Email Access</span>
                     </span>
                   </td>
                   <td className="p-4 text-right">
@@ -537,10 +542,10 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
               </div>
 
               <div className="flex justify-between items-center pt-1">
-                <span className="text-slate-400 font-semibold">OTP Auth:</span>
+                <span className="text-slate-400 font-semibold">Login Auth:</span>
                 <span className="text-emerald-400 font-bold flex items-center">
                   <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                  Active Access
+                  Email & Password Active
                 </span>
               </div>
 
@@ -655,30 +660,45 @@ const MemberManager = ({ activeVendor, receipts = [], onOpenPDF }) => {
 
               <div>
                 <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
-                  <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Mobile Phone Number (For Mobile OTP Login) *</span>
+                  <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Email Address (Resident Portal Login) *</span>
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   required
-                  placeholder="+91 98221 23456"
-                  value={formData.phone}
-                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="e.g. rahul@mandovinagar.org"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
+                  <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Login Password {editingMember ? '(Leave blank to keep current)' : '*'}</span>
+                </label>
+                <input
+                  type="password"
+                  required={!editingMember}
+                  placeholder={editingMember ? 'Enter new password to change...' : 'Set user login password...'}
+                  value={formData.password}
+                  onChange={e => setFormData({ ...formData, password: e.target.value })}
                   className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white font-mono focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <div>
                 <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
-                  <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Email Address *</span>
+                  <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Mobile Phone Number</span>
                 </label>
                 <input
-                  type="email"
-                  placeholder="rahul@mandovinagar.org"
-                  value={formData.email}
-                  onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+                  type="text"
+                  placeholder="e.g. +91 98221 23456"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white font-mono focus:outline-none focus:border-indigo-500"
                 />
               </div>
 

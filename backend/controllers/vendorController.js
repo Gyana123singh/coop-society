@@ -74,14 +74,14 @@ const getVendorUsers = async (req, res, next) => {
   }
 };
 
-// @desc    Add New Society Member / Treasurer with Separate Phone & Email
+// @desc    Add New Society Member / Treasurer with Manual Email & Password
 // @route   POST /api/v1/vendors/users
 // @access  Private (VENDOR_ADMIN, SECRETARY)
 const addVendorUser = async (req, res, next) => {
   try {
     const { name, email, phone, password, role, flatNo, vendorId, panNo, panDocUrl } = req.body;
-    if (!name || (!email && !phone)) {
-      return errorResponse(res, 400, 'Member name and either phone or email are required');
+    if (!name || !email || !password) {
+      return errorResponse(res, 400, 'Member name, email address, and password are required');
     }
 
     const targetVendorId = vendorId || req.vendorId;
@@ -92,7 +92,7 @@ const addVendorUser = async (req, res, next) => {
     const allowedRoles = ['SECRETARY', 'TREASURER', 'MEMBER'];
     const assignedRole = allowedRoles.includes(role) ? role : 'MEMBER';
 
-    const userEmail = email ? email.toLowerCase().trim() : `${phone.replace(/\D/g, '')}@society.org`;
+    const userEmail = email.toLowerCase().trim();
     const userPhone = phone ? phone.trim() : '';
 
     const existingUser = await User.findOne({ 
@@ -104,17 +104,17 @@ const addVendorUser = async (req, res, next) => {
     });
 
     if (existingUser) {
-      return errorResponse(res, 400, 'User with this phone number or email already exists in this society');
+      return errorResponse(res, 400, 'User with this email address or phone number already exists in this society');
     }
 
     const user = await User.create({
-      name,
+      name: name.trim(),
       email: userEmail,
       phone: userPhone,
-      flatNo: flatNo || 'Flat A-101',
+      flatNo: flatNo ? flatNo.trim() : 'Flat A-101',
       panNo: panNo ? panNo.toUpperCase().trim() : '',
       panDocUrl: panDocUrl || '',
-      password: password || 'Password123!',
+      password,
       role: assignedRole,
       vendorId: targetVendorId
     });
@@ -122,7 +122,7 @@ const addVendorUser = async (req, res, next) => {
     const userObj = user.toObject();
     delete userObj.password;
 
-    return successResponse(res, 201, 'Society member added successfully', { user: userObj });
+    return successResponse(res, 201, 'Society member added successfully with email/password login access', { user: userObj });
   } catch (err) {
     next(err);
   }
@@ -133,17 +133,18 @@ const addVendorUser = async (req, res, next) => {
 // @access  Private (SUPER_ADMIN, VENDOR_ADMIN, SECRETARY)
 const updateVendorUser = async (req, res, next) => {
   try {
-    const { name, email, phone, role, flatNo, status, panNo, panDocUrl } = req.body;
+    const { name, email, phone, password, role, flatNo, status, panNo, panDocUrl } = req.body;
     const user = await User.findById(req.params.id);
 
     if (!user) {
       return errorResponse(res, 404, 'Society member not found');
     }
 
-    if (name) user.name = name;
+    if (name) user.name = name.trim();
     if (email) user.email = email.toLowerCase().trim();
-    if (phone) user.phone = phone.trim();
-    if (flatNo) user.flatNo = flatNo;
+    if (phone !== undefined) user.phone = phone.trim();
+    if (flatNo) user.flatNo = flatNo.trim();
+    if (password) user.password = password;
     if (role) user.role = role;
     if (status) user.status = status;
     if (panNo !== undefined) user.panNo = panNo.toUpperCase().trim();

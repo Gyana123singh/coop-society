@@ -174,22 +174,24 @@ const login = async (req, res, next) => {
     const { email, password, vendorId } = req.body;
 
     if (!email || !password) {
-      return errorResponse(res, 400, 'Please provide email and password');
+      return errorResponse(res, 400, 'Please provide both email and password');
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    const cleanEmail = email.toLowerCase().trim();
+    let user = await User.findOne({ email: cleanEmail }).select('+password').populate('vendorId');
     if (!user) {
-      return errorResponse(res, 401, 'Invalid credentials');
+      return errorResponse(res, 401, 'Invalid email or password');
     }
 
-    if (user.vendorId && vendorId && String(user.vendorId) !== String(vendorId) && user.role !== 'SUPER_ADMIN') {
+    if (user.vendorId && vendorId && String(user.vendorId._id || user.vendorId) !== String(vendorId) && user.role !== 'SUPER_ADMIN') {
       user.vendorId = vendorId;
       await user.save();
+      user = await User.findById(user._id).select('+password').populate('vendorId');
     }
 
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return errorResponse(res, 401, 'Invalid credentials');
+      return errorResponse(res, 401, 'Invalid email or password');
     }
 
     if (user.status !== 'ACTIVE') {
@@ -202,7 +204,12 @@ const login = async (req, res, next) => {
 
     return successResponse(res, 200, 'Login successful', {
       token,
-      user: userObj
+      user: {
+        ...userObj,
+        vendorId: user.vendorId?._id || user.vendorId,
+        vendorName: user.vendorId?.name,
+        vendorRegNo: user.vendorId?.regNo
+      }
     });
   } catch (err) {
     next(err);

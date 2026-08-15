@@ -19,7 +19,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
-        <Route path="/otp" element={<OTPScreen />} />
+        <Route path="/otp" element={<Navigate to="/login" replace />} />
 
         <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
           <Route index element={<Navigate to="/form" />} />
