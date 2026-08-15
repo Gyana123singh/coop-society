@@ -231,15 +231,23 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
             <div>
               <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
                 <QrCode className="w-3.5 h-3.5 text-indigo-400" />
-                <span>UPI VPA / UPI ID (Auto generates UPI QR) *</span>
+                <span>UPI VPA / UPI ID (For Mobile QR Payment) *</span>
               </label>
               <input
                 type="text"
                 value={formData.upiId}
                 onChange={e => {
                   const newUpi = e.target.value;
-                  const autoQr = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${newUpi}&pn=${encodeURIComponent(formData.name || 'Society')}&cu=INR`)}`;
-                  setFormData(prev => ({ ...prev, upiId: newUpi, qrCodeUrl: autoQr }));
+                  setFormData(prev => {
+                    // Only auto-generate QR if custom uploaded image is not set or is an api.qrserver URL
+                    const isAuto = !prev.qrCodeUrl || prev.qrCodeUrl.includes('api.qrserver.com');
+                    const autoQr = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${newUpi}&pn=${encodeURIComponent(prev.name || 'Society')}&cu=INR`)}`;
+                    return {
+                      ...prev,
+                      upiId: newUpi,
+                      qrCodeUrl: isAuto ? autoQr : prev.qrCodeUrl
+                    };
+                  });
                 }}
                 placeholder="e.g. mandovi.society@sbi"
                 className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono text-sm"
@@ -247,7 +255,21 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Custom QR Code Image (Upload File or URL)</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-slate-300 font-semibold">Custom QR Code Image (Upload File or URL)</label>
+                {formData.qrCodeUrl && !formData.qrCodeUrl.includes('api.qrserver.com') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const autoQr = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${formData.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(formData.name || 'Society')}&cu=INR`)}`;
+                      setFormData(prev => ({ ...prev, qrCodeUrl: autoQr }));
+                    }}
+                    className="text-[10px] text-amber-400 hover:underline font-bold"
+                  >
+                    Reset to Auto UPI QR
+                  </button>
+                )}
+              </div>
               <div className="flex space-x-2">
                 <input
                   type="text"
@@ -258,7 +280,7 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
                 />
                 <label className="px-3.5 py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 active:scale-95 text-indigo-300 rounded-xl border border-indigo-500/30 font-bold text-xs cursor-pointer flex items-center shrink-0 space-x-1.5 transition-all shadow-sm">
                   <Upload className="w-3.5 h-3.5" />
-                  <span>{formData.qrCodeUrl ? 'Uploaded ✓' : 'Upload QR'}</span>
+                  <span>{formData.qrCodeUrl && !formData.qrCodeUrl.includes('api.qrserver.com') ? 'Custom QR Active ✓' : 'Upload Custom QR'}</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -266,9 +288,31 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
                       const file = e.target.files?.[0];
                       if (file) {
                         const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setFormData(prev => ({ ...prev, qrCodeUrl: reader.result }));
-                          alert(`Custom QR Code image "${file.name}" uploaded and attached successfully!`);
+                        reader.onload = (event) => {
+                          const img = new Image();
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            let width = img.width;
+                            let height = img.height;
+                            const maxDim = 400;
+                            if (width > maxDim || height > maxDim) {
+                              if (width > height) {
+                                height = Math.round((height * maxDim) / width);
+                                width = maxDim;
+                              } else {
+                                width = Math.round((width * maxDim) / height);
+                                height = maxDim;
+                              }
+                            }
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            const compressedDataUrl = canvas.toDataURL('image/png', 0.85);
+                            setFormData(prev => ({ ...prev, qrCodeUrl: compressedDataUrl }));
+                            alert(`Custom QR Code image "${file.name}" uploaded and compressed successfully!`);
+                          };
+                          img.src = event.target.result;
                         };
                         reader.readAsDataURL(file);
                       }
@@ -285,7 +329,7 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center space-x-1">
                 <QrCode className="w-3.5 h-3.5" />
-                <span>Active Payment QR Code Preview</span>
+                <span>Active Payment QR Code Preview ({formData.qrCodeUrl && !formData.qrCodeUrl.includes('api.qrserver.com') ? 'Custom Uploaded' : 'Auto UPI'})</span>
               </span>
               <p className="text-xs font-bold text-white">
                 UPI ID: <span className="font-mono text-indigo-300">{formData.upiId || 'mandovi.society@sbi'}</span>
