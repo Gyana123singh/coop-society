@@ -16,6 +16,11 @@ const vendorSchema = new mongoose.Schema({
     required: [true, 'Registration number is required'],
     trim: true
   },
+  businessType: {
+    type: String,
+    trim: true,
+    default: 'Housing Cooperative Society'
+  },
   panNo: {
     type: String,
     trim: true,

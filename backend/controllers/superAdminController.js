@@ -12,6 +12,7 @@ const createVendor = async (req, res, next) => {
       name,
       address,
       regNo,
+      businessType,
       authorisedSignature,
       contactEmail,
       contactPhone,
@@ -20,8 +21,8 @@ const createVendor = async (req, res, next) => {
       adminPassword
     } = req.body;
 
-    if (!name || !address || !regNo) {
-      return errorResponse(res, 400, 'Vendor name, address, and registration number are required.');
+    if (!name || !regNo) {
+      return errorResponse(res, 400, 'Vendor name and registration number are required.');
     }
 
     if (!adminEmail || !adminPassword) {
@@ -37,8 +38,9 @@ const createVendor = async (req, res, next) => {
     // Create Vendor in MongoDB
     const vendor = await Vendor.create({
       name,
-      address,
+      address: address || 'Main Office & Society Premises',
       regNo,
+      businessType: businessType || 'Housing Cooperative Society',
       authorisedSignature: authorisedSignature || `For ${name}`,
       contactEmail: contactEmail || adminEmail,
       contactPhone: contactPhone || '',
@@ -147,7 +149,7 @@ const getVendorById = async (req, res, next) => {
 const updateVendor = async (req, res, next) => {
   try {
     const { 
-      name, address, regNo, authorisedSignature, contactEmail, contactPhone, currentBookNo, lastReceiptNo, logoUrl, status,
+      name, address, regNo, businessType, authorisedSignature, contactEmail, contactPhone, currentBookNo, lastReceiptNo, logoUrl, status,
       panNo, gstNo, bankName, accountName, accountNo, ifscCode, branchName, upiId, qrCodeUrl
     } = req.body;
 
@@ -159,6 +161,7 @@ const updateVendor = async (req, res, next) => {
     if (name) vendor.name = name;
     if (address) vendor.address = address;
     if (regNo) vendor.regNo = regNo;
+    if (businessType) vendor.businessType = businessType;
     if (authorisedSignature) vendor.authorisedSignature = authorisedSignature;
     if (contactEmail !== undefined) vendor.contactEmail = contactEmail;
     if (contactPhone !== undefined) vendor.contactPhone = contactPhone;

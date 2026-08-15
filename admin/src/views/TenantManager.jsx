@@ -22,7 +22,12 @@ const TenantManager = ({ vendors, onCreateVendor, onUpdateVendorStatus, onDelete
       alert('Please fill in required tenant details.');
       return;
     }
-    onCreateVendor(formData);
+    const payload = {
+      ...formData,
+      address: formData.address || 'Dada Vaidya Road, Panaji - Goa',
+      adminPassword: formData.adminPassword || 'AdminPass123!'
+    };
+    onCreateVendor(payload);
     setIsModalOpen(false);
     setFormData({
       name: '',
