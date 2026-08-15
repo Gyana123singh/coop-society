@@ -175,6 +175,10 @@ const getReceipts = async (req, res, next) => {
 // @access  Private
 const getReceiptById = async (req, res, next) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return errorResponse(res, 400, 'Invalid receipt ID format');
+    }
+
     const receipt = await Receipt.findOne({
       _id: req.params.id,
       vendorId: req.vendorId,

@@ -52,11 +52,16 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
       alert('No active society selected to update.');
       return;
     }
-    onUpdateVendor(activeVendor._id, formData);
-    alert(`Society details updated! User side header banner will now render Reg No. "${formData.regNo}", GSTIN "${formData.gstNo}", and Bank Details.`);
+    const generatedQr = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${formData.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(formData.name || 'Society')}&cu=INR`)}`;
+    const payloadToSave = {
+      ...formData,
+      qrCodeUrl: formData.qrCodeUrl || generatedQr
+    };
+    onUpdateVendor(activeVendor._id, payloadToSave);
+    alert(`Society details & UPI Payment QR Code saved successfully!`);
   };
 
-  const previewQrUrl = formData.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=${formData.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(formData.name || 'Society')}&cu=INR`)}`;
+  const previewQrUrl = formData.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=${formData.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(formData.name || 'Society')}&cu=INR`)}`;
 
   return (
     <div className="space-y-6 max-w-4xl font-sans">
@@ -226,26 +231,30 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
             <div>
               <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
                 <QrCode className="w-3.5 h-3.5 text-indigo-400" />
-                <span>UPI VPA / UPI ID (Auto generates UPI QR)</span>
+                <span>UPI VPA / UPI ID (Auto generates UPI QR) *</span>
               </label>
               <input
                 type="text"
                 value={formData.upiId}
-                onChange={e => setFormData({ ...formData, upiId: e.target.value })}
+                onChange={e => {
+                  const newUpi = e.target.value;
+                  const autoQr = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(`upi://pay?pa=${newUpi}&pn=${encodeURIComponent(formData.name || 'Society')}&cu=INR`)}`;
+                  setFormData(prev => ({ ...prev, upiId: newUpi, qrCodeUrl: autoQr }));
+                }}
                 placeholder="e.g. mandovi.society@sbi"
-                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 mb-1 font-semibold">Custom QR Code Image (Upload or URL)</label>
+              <label className="block text-slate-300 mb-1 font-semibold">Custom QR Code Image (Upload File or URL)</label>
               <div className="flex space-x-2">
                 <input
                   type="text"
                   value={formData.qrCodeUrl}
-                  onChange={e => setFormData({ ...formData, qrCodeUrl: e.target.value })}
+                  onChange={e => setFormData(prev => ({ ...prev, qrCodeUrl: e.target.value }))}
                   placeholder="Paste Image URL or click Upload button ->"
-                  className="flex-1 p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 text-xs"
+                  className="flex-1 p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 text-xs font-mono"
                 />
                 <label className="px-3.5 py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 active:scale-95 text-indigo-300 rounded-xl border border-indigo-500/30 font-bold text-xs cursor-pointer flex items-center shrink-0 space-x-1.5 transition-all shadow-sm">
                   <Upload className="w-3.5 h-3.5" />
@@ -258,8 +267,8 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
                       if (file) {
                         const reader = new FileReader();
                         reader.onloadend = () => {
-                          setFormData({ ...formData, qrCodeUrl: reader.result });
-                          alert(`Custom QR Code image "${file.name}" attached successfully!`);
+                          setFormData(prev => ({ ...prev, qrCodeUrl: reader.result }));
+                          alert(`Custom QR Code image "${file.name}" uploaded and attached successfully!`);
                         };
                         reader.readAsDataURL(file);
                       }
@@ -268,6 +277,25 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
                   />
                 </label>
               </div>
+            </div>
+          </div>
+
+          {/* Active Payment QR Code Live Card */}
+          <div className="bg-slate-950 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider flex items-center space-x-1">
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Active Payment QR Code Preview</span>
+              </span>
+              <p className="text-xs font-bold text-white">
+                UPI ID: <span className="font-mono text-indigo-300">{formData.upiId || 'mandovi.society@sbi'}</span>
+              </p>
+              <p className="text-[11px] text-slate-400">
+                This QR Code will be rendered on all receipt vouchers and on the resident user profile & form fill up screens.
+              </p>
+            </div>
+            <div className="shrink-0 text-center bg-white p-1.5 rounded-xl border border-slate-700 shadow-md">
+              <img src={previewQrUrl} alt="Active Payment QR Code" className="w-20 h-20 object-contain" />
             </div>
           </div>
         </div>

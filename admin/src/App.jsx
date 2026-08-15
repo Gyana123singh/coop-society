@@ -261,6 +261,7 @@ const App = () => {
       } else {
         await axios.put('/api/v1/vendors/profile', updatedData, { headers });
       }
+      await fetchVendorsFromBackend();
     } catch (err) {
       console.warn('Backend API update notice, updating local state:', err?.response?.data || err.message);
     }
