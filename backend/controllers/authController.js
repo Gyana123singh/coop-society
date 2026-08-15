@@ -105,8 +105,15 @@ const firebaseLogin = async (req, res, next) => {
 
     let registeredUser = await User.findOne({ $or: searchConditions }).populate('vendorId');
 
-    // Auto-onboard new mobile number if not yet saved in MongoDB
-    if (!registeredUser) {
+    // Auto-map existing user to selected Housing Society if specified
+    if (registeredUser) {
+      if (vendorId && String(registeredUser.vendorId?._id || registeredUser.vendorId) !== String(vendorId)) {
+        registeredUser.vendorId = vendorId;
+        await registeredUser.save();
+        registeredUser = await User.findById(registeredUser._id).populate('vendorId');
+        console.log(`[Firebase Auth] Mapped user ${registeredUser.name} to selected Housing Society: ${registeredUser.vendorId?.name}`);
+      }
+    } else {
       let activeVendor = null;
       if (vendorId) {
         activeVendor = await Vendor.findById(vendorId);
@@ -146,6 +153,9 @@ const firebaseLogin = async (req, res, next) => {
         email: registeredUser.email,
         phone: registeredUser.phone,
         role: registeredUser.role,
+        flatNo: registeredUser.flatNo,
+        panNo: registeredUser.panNo,
+        panDocUrl: registeredUser.panDocUrl,
         vendorId: society?._id,
         vendorName: society?.name,
         vendorRegNo: society?.regNo
@@ -161,7 +171,7 @@ const firebaseLogin = async (req, res, next) => {
 // @access  Public
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, vendorId } = req.body;
 
     if (!email || !password) {
       return errorResponse(res, 400, 'Please provide email and password');
@@ -170,6 +180,11 @@ const login = async (req, res, next) => {
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return errorResponse(res, 401, 'Invalid credentials');
+    }
+
+    if (user.vendorId && vendorId && String(user.vendorId) !== String(vendorId) && user.role !== 'SUPER_ADMIN') {
+      user.vendorId = vendorId;
+      await user.save();
     }
 
     const isMatch = await user.matchPassword(password);
@@ -227,8 +242,9 @@ const googleSignIn = async (req, res, next) => {
 
     let user = await User.findOne({ email });
 
-    if (user && user.vendorId && vendorId && user.vendorId.toString() !== vendorId.toString()) {
-      return errorResponse(res, 403, 'Cross-tenant login blocked. User belongs to another housing society.');
+    if (user && vendorId && String(user.vendorId) !== String(vendorId) && user.role !== 'SUPER_ADMIN') {
+      user.vendorId = vendorId;
+      await user.save();
     }
 
     let targetVendorId = user ? user.vendorId : (vendorId || (await Vendor.findOne({ status: 'ACTIVE' }))?._id);
@@ -270,12 +286,12 @@ const getMe = async (req, res, next) => {
   }
 };
 
-// @desc    Update Current User Profile (Name, Email, Phone)
+// @desc    Update Current User Profile (Name, Email, Phone, FlatNo, PanNo, PanDocUrl)
 // @route   PUT /api/v1/auth/me
 // @access  Private
 const updateMe = async (req, res, next) => {
   try {
-    const { name, email, phone } = req.body;
+    const { name, email, phone, flatNo, panNo, panDocUrl } = req.body;
     const user = await User.findById(req.user._id);
     if (!user) {
       return errorResponse(res, 404, 'User not found.');
@@ -284,6 +300,9 @@ const updateMe = async (req, res, next) => {
     if (name) user.name = name;
     if (email) user.email = email.toLowerCase().trim();
     if (phone) user.phone = phone.trim();
+    if (flatNo) user.flatNo = flatNo;
+    if (panNo !== undefined) user.panNo = panNo.toUpperCase().trim();
+    if (panDocUrl !== undefined) user.panDocUrl = panDocUrl;
 
     await user.save();
     const updatedUser = await User.findById(user._id).populate('vendorId');

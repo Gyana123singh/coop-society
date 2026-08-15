@@ -7,7 +7,8 @@ const {
   getReceiptById,
   updateReceipt,
   deleteReceipt,
-  downloadReceiptPDF
+  downloadReceiptPDF,
+  getCollectionAnalytics
 } = require('../controllers/receiptController');
 const { protect } = require('../middlewares/authMiddleware');
 const { authorize } = require('../middlewares/roleMiddleware');
@@ -16,6 +17,7 @@ const { enforceTenant } = require('../middlewares/tenantMiddleware');
 router.use(protect);
 router.use(enforceTenant);
 
+router.get('/analytics', getCollectionAnalytics);
 router.get('/next-number', getNextReceiptNumber);
 router.get('/', getReceipts);
 router.post('/', authorize('SUPER_ADMIN', 'VENDOR_ADMIN', 'SECRETARY', 'TREASURER', 'MEMBER'), createReceipt);

@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Save, FileSpreadsheet, Mail, Phone, MapPin, FileText } from 'lucide-react';
+import { Building2, Save, FileSpreadsheet, Mail, Phone, MapPin, FileText, CreditCard, QrCode, ShieldCheck, Upload } from 'lucide-react';
 
 const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
   const [formData, setFormData] = useState({
     name: activeVendor?.name || 'Mandovi Nagar Co-Op. Housing Society Ltd.',
     address: activeVendor?.address || 'Dada Vaidya Road, Panaji - Goa',
     regNo: activeVendor?.regNo || 'HSG-(a)-70/GOA',
+    panNo: activeVendor?.panNo || 'AAAAA0000A',
+    gstNo: activeVendor?.gstNo || '30AAAAA0000A1Z5',
+    bankName: activeVendor?.bankName || 'State Bank of India',
+    accountName: activeVendor?.accountName || 'Mandovi Nagar Co-Op. Housing Society Ltd.',
+    accountNo: activeVendor?.accountNo || '38492019482',
+    ifscCode: activeVendor?.ifscCode || 'SBIN0001234',
+    branchName: activeVendor?.branchName || 'Panaji Branch',
+    upiId: activeVendor?.upiId || 'mandovi.society@sbi',
+    qrCodeUrl: activeVendor?.qrCodeUrl || '',
     authorisedSignature: activeVendor?.authorisedSignature || 'For Mandovi Nagar Co-Op. Housing Society Ltd.,',
     currentBookNo: activeVendor?.currentBookNo || '1',
     lastReceiptNo: activeVendor?.lastReceiptNo || 180,
@@ -19,6 +28,15 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
         name: activeVendor.name || '',
         address: activeVendor.address || '',
         regNo: activeVendor.regNo || '',
+        panNo: activeVendor.panNo || '',
+        gstNo: activeVendor.gstNo || '',
+        bankName: activeVendor.bankName || '',
+        accountName: activeVendor.accountName || '',
+        accountNo: activeVendor.accountNo || '',
+        ifscCode: activeVendor.ifscCode || '',
+        branchName: activeVendor.branchName || '',
+        upiId: activeVendor.upiId || '',
+        qrCodeUrl: activeVendor.qrCodeUrl || '',
         authorisedSignature: activeVendor.authorisedSignature || `For ${activeVendor.name || 'Housing Society'}`,
         currentBookNo: activeVendor.currentBookNo || '1',
         lastReceiptNo: activeVendor.lastReceiptNo || 0,
@@ -35,95 +53,230 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
       return;
     }
     onUpdateVendor(activeVendor._id, formData);
-    alert(`Society details updated! User side header banner will now render "${formData.name}".`);
+    alert(`Society details updated! User side header banner will now render Reg No. "${formData.regNo}", GSTIN "${formData.gstNo}", and Bank Details.`);
   };
 
+  const previewQrUrl = formData.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=${formData.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(formData.name || 'Society')}&cu=INR`)}`;
+
   return (
-    <div className="space-y-6 max-w-3xl font-sans">
+    <div className="space-y-6 max-w-4xl font-sans">
       <div>
         <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2">
           <Building2 className="w-5 h-5 text-indigo-400" />
           <span>Housing Society / Business Settings</span>
         </h2>
         <p className="text-xs text-slate-400 mt-0.5">
-          Configure society name, address, email, phone & receipt voucher header details rendered to resident users.
+          Configure legal name, PAN/GST slots, official contact details, bank remittance accounts & QR code for resident users.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 text-xs">
-        <div>
-          <label className="block text-slate-300 mb-1 font-semibold">Society / Business Legal Name *</label>
-          <input
-            type="text"
-            required
-            value={formData.name}
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g. Mandovi Nagar Co-Op. Housing Society Ltd."
-            className="w-full p-3 bg-slate-950 rounded-xl border border-slate-800 text-white font-bold focus:outline-none focus:border-indigo-500 transition-all text-sm"
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 text-xs">
+        
+        {/* Basic & Address Details */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-2">
+            <Building2 className="w-4 h-4 text-indigo-400" />
+            <span>Society Legal Profile & Contact</span>
+          </h3>
 
-        <div>
-          <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
-            <MapPin className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Full Address *</span>
-          </label>
-          <input
-            type="text"
-            required
-            value={formData.address}
-            onChange={e => setFormData({ ...formData, address: e.target.value })}
-            placeholder="e.g. Dada Vaidya Road, Panaji - Goa"
-            className="w-full p-3 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 transition-all"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-slate-300 mb-1 font-semibold">Registration No. / Tax ID *</label>
+            <label className="block text-slate-300 mb-1 font-semibold">Society / Business Legal Name *</label>
             <input
               type="text"
               required
-              value={formData.regNo}
-              onChange={e => setFormData({ ...formData, regNo: e.target.value })}
-              placeholder="HSG-(a)-70/GOA"
-              className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+              value={formData.name}
+              onChange={e => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g. Mandovi Nagar Co-Op. Housing Society Ltd."
+              className="w-full p-3 bg-slate-950 rounded-xl border border-slate-800 text-white font-bold focus:outline-none focus:border-indigo-500 transition-all text-sm"
             />
           </div>
 
           <div>
             <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
-              <Mail className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Official Contact Email</span>
-            </label>
-            <input
-              type="email"
-              value={formData.contactEmail}
-              onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
-              placeholder="member@mandovinagar.org"
-              className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <div className="sm:col-span-2 md:col-span-1">
-            <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
-              <Phone className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Official Contact Phone</span>
+              <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Full Address *</span>
             </label>
             <input
               type="text"
-              value={formData.contactPhone}
-              onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
-              placeholder="+91 98221 23456"
-              className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+              required
+              value={formData.address}
+              onChange={e => setFormData({ ...formData, address: e.target.value })}
+              placeholder="e.g. Dada Vaidya Road, Panaji - Goa"
+              className="w-full p-3 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 transition-all"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
+                <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Official Contact Email</span>
+              </label>
+              <input
+                type="email"
+                value={formData.contactEmail}
+                onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
+                placeholder="member@mandovinagar.org"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
+                <Phone className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Official Contact Phone</span>
+              </label>
+              <input
+                type="text"
+                value={formData.contactPhone}
+                onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                placeholder="+91 98221 23456"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="pt-4 border-t border-slate-800/80 space-y-4">
+        {/* Tax & Registration Slots (Reg No & GSTIN) */}
+        <div className="pt-2 space-y-4">
+          <h3 className="text-sm font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>Tax & Legal Registration Slots (Reg. No. & GSTIN)</span>
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">Society Reg. No. *</label>
+              <input
+                type="text"
+                required
+                value={formData.regNo}
+                onChange={e => setFormData({ ...formData, regNo: e.target.value })}
+                placeholder="HSG-(a)-70/GOA"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">GST Registration No. (GSTIN) *</label>
+              <input
+                type="text"
+                required
+                value={formData.gstNo}
+                onChange={e => setFormData({ ...formData, gstNo: e.target.value.toUpperCase() })}
+                placeholder="30AAAAA0000A1Z5"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono uppercase"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Bank & QR Details */}
+        <div className="pt-2 space-y-4">
+          <h3 className="text-sm font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-2">
+            <CreditCard className="w-4 h-4 text-indigo-400" />
+            <span>Bank Account & QR Code Settings (User Side Bottom Section)</span>
+          </h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">Account Holder Name</label>
+              <input
+                type="text"
+                value={formData.accountName}
+                onChange={e => setFormData({ ...formData, accountName: e.target.value })}
+                placeholder="e.g. Mandovi Nagar Co-Op. Housing Society Ltd."
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">Bank Name & Branch</label>
+              <input
+                type="text"
+                value={formData.bankName}
+                onChange={e => setFormData({ ...formData, bankName: e.target.value })}
+                placeholder="e.g. State Bank of India"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">Bank Account Number</label>
+              <input
+                type="text"
+                value={formData.accountNo}
+                onChange={e => setFormData({ ...formData, accountNo: e.target.value })}
+                placeholder="e.g. 38492019482"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">IFSC Code</label>
+              <input
+                type="text"
+                value={formData.ifscCode}
+                onChange={e => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })}
+                placeholder="e.g. SBIN0001234"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono uppercase"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold flex items-center space-x-1">
+                <QrCode className="w-3.5 h-3.5 text-indigo-400" />
+                <span>UPI VPA / UPI ID (Auto generates UPI QR)</span>
+              </label>
+              <input
+                type="text"
+                value={formData.upiId}
+                onChange={e => setFormData({ ...formData, upiId: e.target.value })}
+                placeholder="e.g. mandovi.society@sbi"
+                className="w-full p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-300 mb-1 font-semibold">Custom QR Code Image (Upload or URL)</label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={formData.qrCodeUrl}
+                  onChange={e => setFormData({ ...formData, qrCodeUrl: e.target.value })}
+                  placeholder="Paste Image URL or click Upload button ->"
+                  className="flex-1 p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-white focus:outline-none focus:border-indigo-500 text-xs"
+                />
+                <label className="px-3.5 py-2.5 bg-indigo-600/30 hover:bg-indigo-600/50 active:scale-95 text-indigo-300 rounded-xl border border-indigo-500/30 font-bold text-xs cursor-pointer flex items-center shrink-0 space-x-1.5 transition-all shadow-sm">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{formData.qrCodeUrl ? 'Uploaded ✓' : 'Upload QR'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setFormData({ ...formData, qrCodeUrl: reader.result });
+                          alert(`Custom QR Code image "${file.name}" attached successfully!`);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Voucher Sequence & Signature */}
+        <div className="pt-2 space-y-4 border-t border-slate-800/80">
           <h3 className="text-sm font-bold text-white flex items-center space-x-2">
             <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
-            <span>Receipt Voucher Sequence & Signature Settings</span>
+            <span>Receipt Voucher Sequence & Signature</span>
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -160,24 +313,53 @@ const SocietySettings = ({ activeVendor, onUpdateVendor }) => {
           </div>
         </div>
 
-        {/* User Side Banner Preview Box in Admin */}
-        <div className="mt-4 pt-4 border-t border-slate-800/80">
-          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+        {/* User Side Banner & Bottom Preview Box in Admin */}
+        <div className="mt-4 pt-4 border-t border-slate-800/80 space-y-3">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
             <FileText className="w-3.5 h-3.5 text-indigo-400" />
-            <span>User Portal Banner Preview</span>
+            <span>Live User Portal Banner & Bottom Preview</span>
           </p>
-          <div className="bg-[#5a32fa] text-white p-4 rounded-xl flex items-start space-x-3.5 shadow-md">
-            <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5 text-white" />
+
+          {/* 1st Image Top Purple Banner Preview */}
+          <div className="bg-[#5a32fa] text-white p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+            <div className="flex items-start space-x-3">
+              <div className="w-10 h-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold leading-tight truncate">{formData.name || 'Society Name'}</h4>
+                <p className="text-xs text-white/90 leading-tight mt-0.5 truncate">{formData.address || 'Society Address'}</p>
+                <p className="text-[11px] text-white/90 leading-tight mt-1 truncate">
+                  ✉ {formData.contactEmail || 'member@mandovinagar.org'} &nbsp; 📞 {formData.contactPhone || '+91 98221 23456'}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h4 className="text-sm font-bold leading-tight truncate">{formData.name || 'Society Name'}</h4>
-              <p className="text-xs text-white/90 leading-tight mt-0.5 truncate">{formData.address || 'Society Address'}</p>
-              <p className="text-xs text-white/90 leading-tight mt-1 truncate">
-                ✉ {formData.contactEmail || 'member@mandovinagar.org'} &nbsp; 📞 {formData.contactPhone || '+91 98221 23456'}
-              </p>
+
+            <div className="flex sm:flex-col gap-1.5 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-white/20">
+              <div className="bg-white/15 px-2.5 py-1 rounded-lg border border-white/20 text-[11px] flex items-center space-x-1.5">
+                <span className="bg-white text-[#5a32fa] font-black px-1 rounded text-[9px]">REG</span>
+                <span className="font-mono font-bold">{formData.regNo || 'HSG-(a)-70/GOA'}</span>
+              </div>
+              <div className="bg-white/15 px-2.5 py-1 rounded-lg border border-white/20 text-[11px] flex items-center space-x-1.5">
+                <span className="bg-emerald-400 text-slate-950 font-black px-1 rounded text-[9px]">GSTIN</span>
+                <span className="font-mono font-bold">{formData.gstNo || '30AAAAA0000A1Z5'}</span>
+              </div>
             </div>
           </div>
+
+          {/* User Side Bottom Bank & QR Code Preview */}
+          <div className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex items-center justify-between gap-3 text-slate-300">
+            <div className="space-y-0.5 text-xs">
+              <p className="font-bold text-indigo-400 uppercase text-[10px] tracking-wider">Bank & QR Details (Shown at Bottom):</p>
+              <p className="text-white font-semibold">{formData.accountName || formData.name}</p>
+              <p className="text-[11px] text-slate-400">{formData.bankName || 'State Bank of India'} | A/C: <span className="font-mono text-white">{formData.accountNo || '38492019482'}</span> | IFSC: <span className="font-mono text-white">{formData.ifscCode || 'SBIN0001234'}</span></p>
+              <p className="text-[11px] font-mono text-indigo-300">UPI: {formData.upiId || 'mandovi.society@sbi'}</p>
+            </div>
+            <div className="shrink-0 text-center">
+              <img src={previewQrUrl} alt="QR Code Preview" className="w-12 h-12 bg-white p-0.5 rounded border border-slate-700" />
+            </div>
+          </div>
+
         </div>
 
         <div className="pt-3 flex justify-end">

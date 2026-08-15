@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { Building2, MapPin, BadgeCheck, LogOut, Phone, Mail, User as UserIcon, RefreshCw, Edit3, Loader2, CheckCircle2, ShieldCheck, Home } from 'lucide-react';
+import { Building2, MapPin, BadgeCheck, LogOut, Phone, Mail, User as UserIcon, RefreshCw, Edit3, Loader2, CheckCircle2, ShieldCheck, Home, CreditCard, QrCode, FileText, Upload } from 'lucide-react';
 import axios from 'axios';
 
 const Profile = () => {
@@ -14,13 +14,22 @@ const Profile = () => {
     email: authUser?.email || residentDetails.email,
     phone: authUser?.phone || '+91 8280057771',
     role: authUser?.role || 'MEMBER',
-    flatNo: authUser?.flatNo || residentDetails.flatNo
+    flatNo: authUser?.flatNo || residentDetails.flatNo || 'Flat A-302',
+    panNo: authUser?.panNo || residentDetails.panNo || 'AAAAA0000A',
+    panDocUrl: authUser?.panDocUrl || residentDetails.panDocUrl || ''
   });
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    flatNo: '',
+    panNo: '',
+    panDocUrl: ''
+  });
 
   // Fetch live user profile and society details from backend MongoDB
   const fetchUserProfile = async () => {
@@ -41,7 +50,15 @@ const Profile = () => {
           email: u.email || profileData.email,
           phone: u.phone || profileData.phone,
           role: u.role || 'MEMBER',
-          flatNo: u.flatNo || residentDetails.flatNo
+          flatNo: u.flatNo || residentDetails.flatNo || 'Flat A-302',
+          panNo: u.panNo || residentDetails.panNo || 'AAAAA0000A',
+          panDocUrl: u.panDocUrl || residentDetails.panDocUrl || ''
+        });
+
+        updateResidentDetails({
+          flatNo: u.flatNo || residentDetails.flatNo,
+          panNo: u.panNo || residentDetails.panNo,
+          panDocUrl: u.panDocUrl || residentDetails.panDocUrl
         });
 
         // Sync society details if populated
@@ -71,7 +88,10 @@ const Profile = () => {
     setEditForm({
       name: profileData.name,
       email: profileData.email,
-      phone: profileData.phone
+      phone: profileData.phone,
+      flatNo: profileData.flatNo || residentDetails.flatNo || 'Flat A-302',
+      panNo: profileData.panNo || residentDetails.panNo || '',
+      panDocUrl: profileData.panDocUrl || residentDetails.panDocUrl || ''
     });
     setShowEditModal(true);
   };
@@ -91,22 +111,48 @@ const Profile = () => {
           ...prev,
           name: updated.name || editForm.name,
           email: updated.email || editForm.email,
-          phone: updated.phone || editForm.phone
+          phone: updated.phone || editForm.phone,
+          flatNo: updated.flatNo || editForm.flatNo,
+          panNo: updated.panNo || editForm.panNo,
+          panDocUrl: updated.panDocUrl || editForm.panDocUrl
         }));
+
+        updateResidentDetails({
+          name: editForm.name,
+          email: editForm.email,
+          phone: editForm.phone,
+          flatNo: editForm.flatNo,
+          panNo: editForm.panNo,
+          panDocUrl: editForm.panDocUrl
+        });
+
         setShowEditModal(false);
-        alert('Profile updated successfully in MongoDB database!');
+        alert('Resident Profile updated successfully in backend database!');
         return;
       }
     } catch (err) {
-      console.warn('[Profile] API update error, applying local state update:', err.message);
+      console.warn('[Profile] API update notice, saving to local context:', err.message);
       setProfileData(prev => ({
         ...prev,
         name: editForm.name,
         email: editForm.email,
-        phone: editForm.phone
+        phone: editForm.phone,
+        flatNo: editForm.flatNo,
+        panNo: editForm.panNo,
+        panDocUrl: editForm.panDocUrl
       }));
+
+      updateResidentDetails({
+        name: editForm.name,
+        email: editForm.email,
+        phone: editForm.phone,
+        flatNo: editForm.flatNo,
+        panNo: editForm.panNo,
+        panDocUrl: editForm.panDocUrl
+      });
+
       setShowEditModal(false);
-      alert('Profile details updated!');
+      alert('Resident Profile details updated successfully!');
     } finally {
       setSaving(false);
     }
@@ -207,14 +253,64 @@ const Profile = () => {
                 </div>
               </div>
 
-              <div className="p-4 flex items-start space-x-4">
+              <div className="p-4 flex items-start space-x-4 border-b border-gray-100">
                 <Phone className="text-[#5a32fa] shrink-0 mt-0.5" size={20} />
                 <div>
                   <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Registered Phone / Contact</p>
                   <p className="text-sm font-bold text-gray-900">{profileData.phone || '+91 8280057771'}</p>
                 </div>
               </div>
+
+              <div className="p-4 flex items-start space-x-4">
+                <CreditCard className="text-[#5a32fa] shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">PAN Card Number</p>
+                  <p className="text-sm font-mono font-bold text-amber-600">{residentDetails.panNo || 'AAAAA0000A'}</p>
+                </div>
+              </div>
               
+            </div>
+
+            {/* Bank Details & UPI Payment QR Code Section */}
+            <div className="bg-white md:bg-gray-50 rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4">
+              <div className="flex items-center space-x-2.5 pb-2 border-b border-gray-200">
+                <CreditCard className="text-[#5a32fa]" size={20} />
+                <h3 className="text-sm font-bold text-gray-900">Bank Details & UPI Payment QR Code</h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white p-3 rounded-xl border border-gray-200">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Account Holder</p>
+                  <p className="font-bold text-gray-900">{residentDetails.accountName || residentDetails.societyName}</p>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-gray-200">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Bank & Branch</p>
+                  <p className="font-bold text-gray-900">{residentDetails.bankName || 'State Bank of India'} ({residentDetails.branchName || 'Panaji Branch'})</p>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-gray-200">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">Account Number</p>
+                  <p className="font-mono font-bold text-gray-900">{residentDetails.accountNo || '38492019482'}</p>
+                </div>
+                <div className="bg-white p-3 rounded-xl border border-gray-200">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase">IFSC Code</p>
+                  <p className="font-mono font-bold text-gray-900">{residentDetails.ifscCode || 'SBIN0001234'}</p>
+                </div>
+              </div>
+
+              <div className="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+                <div>
+                  <p className="text-xs font-bold text-indigo-900">Official Society UPI ID</p>
+                  <p className="text-sm font-mono font-bold text-[#5a32fa]">{residentDetails.upiId || 'mandovi.society@sbi'}</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Scan QR code using GPay, PhonePe, Paytm or BHIM to pay</p>
+                </div>
+                <div className="shrink-0 bg-white p-1.5 rounded-lg border border-indigo-200 shadow-sm">
+                  <img 
+                    src={residentDetails.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`upi://pay?pa=${residentDetails.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(residentDetails.societyName)}&cu=INR`)}`}
+                    alt="UPI Payment QR Code" 
+                    className="w-20 h-20 object-contain"
+                  />
+                </div>
+              </div>
             </div>
 
             <button 
@@ -239,26 +335,27 @@ const Profile = () => {
               <span>Edit Resident Profile Details</span>
             </h3>
 
-            <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs">
+            <form onSubmit={handleUpdateProfile} className="space-y-3 text-xs max-h-[75vh] overflow-y-auto pr-1">
               <div>
-                <label className="block text-gray-700 font-bold mb-1">Full Name *</label>
+                <label className="block text-gray-700 font-bold mb-1">Full Member Name *</label>
                 <input
                   type="text"
                   required
                   value={editForm.name}
                   onChange={e => setEditForm({ ...editForm, name: e.target.value })}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-bold text-sm"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-bold text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-700 font-bold mb-1">Email Address *</label>
+                <label className="block text-gray-700 font-bold mb-1">Flat / Shop Number *</label>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  value={editForm.email}
-                  onChange={e => setEditForm({ ...editForm, email: e.target.value })}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-semibold text-sm"
+                  placeholder="e.g. Flat A-302"
+                  value={editForm.flatNo}
+                  onChange={e => setEditForm({ ...editForm, flatNo: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-semibold text-sm text-indigo-600"
                 />
               </div>
 
@@ -269,11 +366,69 @@ const Profile = () => {
                   required
                   value={editForm.phone}
                   onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-semibold text-sm"
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-mono font-semibold text-sm"
                 />
               </div>
 
-              <div className="flex justify-end space-x-3 pt-2">
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={editForm.email}
+                  onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-semibold text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-bold mb-1 flex items-center space-x-1">
+                  <CreditCard className="w-3.5 h-3.5 text-amber-500" />
+                  <span>PAN Card Number (Permanent Account Number)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. ABCDE1234F"
+                  value={editForm.panNo}
+                  onChange={e => setEditForm({ ...editForm, panNo: e.target.value.toUpperCase() })}
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] font-mono uppercase font-bold text-sm text-amber-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-bold mb-1">PAN Document Attachment (Image/PDF)</label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    placeholder="Document attachment data..."
+                    value={editForm.panDocUrl ? (editForm.panDocUrl.startsWith('data:') ? 'Attached base64 document ✓' : editForm.panDocUrl) : ''}
+                    onChange={e => setEditForm({ ...editForm, panDocUrl: e.target.value })}
+                    className="flex-1 p-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#5a32fa] text-xs font-mono"
+                  />
+                  <label className="px-3 py-2.5 bg-[#5a32fa]/10 hover:bg-[#5a32fa]/20 text-[#5a32fa] font-bold rounded-xl border border-[#5a32fa]/20 cursor-pointer text-xs shrink-0 flex items-center space-x-1 transition-all">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{editForm.panDocUrl ? 'Uploaded ✓' : 'Upload'}</span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setEditForm(prev => ({ ...prev, panDocUrl: reader.result }));
+                            alert(`Attached PAN document "${file.name}" successfully!`);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
@@ -284,10 +439,10 @@ const Profile = () => {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2.5 rounded-xl bg-[#5a32fa] text-white font-bold flex items-center space-x-1.5 disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-[#5a32fa] hover:bg-[#4826d1] text-white font-bold flex items-center space-x-1.5 disabled:opacity-50 shadow-md shadow-[#5a32fa]/20"
                 >
                   {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                  <span>Save Profile</span>
+                  <span>Save Profile Changes</span>
                 </button>
               </div>
             </form>

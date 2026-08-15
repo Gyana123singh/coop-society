@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, RotateCcw, Save, FileText, User, Home, Volume2, Building2, Loader2 } from 'lucide-react';
+import { PlusCircle, RotateCcw, Save, FileText, User, Home, Volume2, Building2, Loader2, QrCode, CreditCard, Copy, Check, Upload, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 
 const initialParticulars = [
@@ -14,7 +14,7 @@ const initialParticulars = [
 ];
 
 const FormFillUp = () => {
-  const { residentDetails, addReceipt } = useApp();
+  const { residentDetails, addReceipt, updateResidentDetails } = useApp();
   const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
@@ -32,6 +32,29 @@ const FormFillUp = () => {
 
   const [particulars, setParticulars] = useState(initialParticulars);
   const [loadingSave, setLoadingSave] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+  const [panDocUrl, setPanDocUrl] = useState(residentDetails.panDocUrl || '');
+
+  const handleCopy = (text, fieldName) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  const handlePanUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result;
+        setPanDocUrl(base64);
+        updateResidentDetails({ panDocUrl: base64 });
+        alert(`PAN Card document "${file.name}" uploaded successfully!`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Fetch next receipt number sequence from backend MongoDB
   const fetchNextReceiptNo = async () => {
@@ -112,7 +135,7 @@ const FormFillUp = () => {
           totalAmount,
           items: savedReceipt.items
         });
-        alert(`Receipt Voucher #${savedReceipt.receiptNo} created & stored in MongoDB database successfully!`);
+        alert(`Receipt Voucher #${savedReceipt.receiptNo} saved and submitted to Admin Portal successfully!`);
         navigate('/history');
         return;
       }
@@ -122,7 +145,7 @@ const FormFillUp = () => {
       setLoadingSave(false);
     }
 
-    // Local fallback save
+    // Local fallback save & submit
     const receiptData = {
       id: `rcpt_${Date.now()}`,
       ...formData,
@@ -130,6 +153,7 @@ const FormFillUp = () => {
       totalAmount,
     };
     addReceipt(receiptData);
+    alert(`Receipt Voucher #${receiptData.receiptNo} saved & submitted to Admin Portal successfully!`);
     navigate('/history');
   };
 
@@ -144,7 +168,7 @@ const FormFillUp = () => {
     }));
   };
 
-  // Reusable Floating Input Component (Scaled up font sizes)
+  // Reusable Floating Input Component
   const FloatingInput = ({ label, icon: Icon, ...props }) => (
     <div className="relative mt-2.5">
       <label className="absolute -top-2.5 left-3 bg-[#f9fafb] px-1.5 text-xs text-gray-500 font-medium z-10">{label}</label>
@@ -161,6 +185,8 @@ const FormFillUp = () => {
       </div>
     </div>
   );
+
+  const qrCodeApiUrl = residentDetails.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`upi://pay?pa=${residentDetails.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(residentDetails.societyName)}&cu=INR`)}`;
 
   return (
     <div className="min-h-full pb-10 bg-[#f9fafb]">
@@ -179,23 +205,60 @@ const FormFillUp = () => {
       
       <div className="px-6 py-6 md:p-8 w-full max-w-5xl mx-auto">
         
-        {/* Blue Society Banner */}
-        <div className="bg-[#5a32fa] text-white p-5 rounded-2xl mb-8 flex items-start space-x-4 shadow-lg shadow-[#5a32fa]/20">
-          <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <FileText size={28} className="text-white" />
+        {/* Blue Society Banner with PAN & GST Registration Slots */}
+        <div className="bg-[#5a32fa] text-white p-5 rounded-2xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg shadow-[#5a32fa]/20">
+          <div className="flex items-start space-x-4">
+            <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+              <FileText size={28} className="text-white" />
+            </div>
+            <div>
+              <h2 className="text-base md:text-lg font-bold leading-tight mb-1.5">{residentDetails.societyName}</h2>
+              <p className="text-xs md:text-sm text-white/90 leading-tight mb-1.5">{residentDetails.address}</p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs md:text-sm text-white/90">
+                <span>✉ {residentDetails.email}</span>
+                <span>📞 {residentDetails.phone || '+91 98221 23456'}</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base md:text-lg font-bold leading-tight mb-1.5">{residentDetails.societyName}</h2>
-            <p className="text-xs md:text-sm text-white/90 leading-tight mb-1">{residentDetails.address}</p>
-            <p className="text-xs md:text-sm text-white/90 leading-tight">
-              ✉ {residentDetails.email} &nbsp; 📞 {residentDetails.phone || '+91 98221 23456'}
-            </p>
+
+          {/* PAN & GST Registration Slots */}
+          <div className="flex md:flex-col flex-wrap gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-white/20 shrink-0">
+            <div className="bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/20 flex items-center justify-between space-x-2 text-xs">
+              <div className="flex items-center space-x-2">
+                <span className="bg-white text-[#5a32fa] font-black px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">PAN</span>
+                <span className="font-mono font-bold tracking-wide">{residentDetails.panNo || 'AAAAA0000A'}</span>
+              </div>
+              
+              {/* PAN Upload Button */}
+              <label className="ml-2 px-2.5 py-1 bg-white/20 hover:bg-white/30 active:scale-95 text-white rounded-lg text-[10px] font-bold cursor-pointer flex items-center space-x-1 transition-all border border-white/30 shadow-sm" title="Upload PAN Card Image / Document">
+                <Upload size={11} />
+                <span>{panDocUrl ? 'Uploaded ✓' : 'Upload'}</span>
+                <input type="file" accept="image/*,.pdf" onChange={handlePanUpload} className="hidden" />
+              </label>
+
+              {panDocUrl && (
+                <a 
+                  href={panDocUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="p-1 text-white/90 hover:text-white"
+                  title="View Uploaded PAN Document"
+                >
+                  <ExternalLink size={12} />
+                </a>
+              )}
+            </div>
+
+            <div className="bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/20 flex items-center space-x-2 text-xs">
+              <span className="bg-emerald-400 text-slate-950 font-black px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider">GSTIN</span>
+              <span className="font-mono font-bold tracking-wide">{residentDetails.gstNo || '30AAAAA0000A1Z5'}</span>
+            </div>
           </div>
         </div>
 
         <div className="space-y-10">
           
-          {/* Row 1: Meta Details & Payment Details (Side by side on Desktop) */}
+          {/* Row 1: Meta Details & Payment Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
             
             {/* Meta Details */}
@@ -245,7 +308,7 @@ const FormFillUp = () => {
 
           </div>
 
-          {/* Row 2: Payer Information (Full Width) */}
+          {/* Row 2: Payer Information */}
           <div>
             <h2 className="text-sm font-bold text-gray-800 mb-4">Payer Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -261,7 +324,7 @@ const FormFillUp = () => {
             </div>
           </div>
 
-          {/* Row 3: Particulars (Full Width) */}
+          {/* Row 3: Particulars */}
           <div>
             <div className="flex justify-between items-end mb-5">
               <h2 className="text-sm font-bold text-gray-800">Particulars (towards following)</h2>
@@ -305,10 +368,117 @@ const FormFillUp = () => {
             </button>
 
           </div>
+
+          {/* User Side Bottom: Society Bank Details & Instant UPI QR Code Section */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center space-x-2.5 mb-5 pb-3 border-b border-gray-100">
+              <div className="w-9 h-9 rounded-xl bg-indigo-50 text-[#5a32fa] flex items-center justify-center font-bold">
+                <CreditCard size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Bank Details & UPI Payment QR Code</h3>
+                <p className="text-xs text-gray-500">Official society bank account for direct transfers & UPI payments</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+              
+              {/* Bank Details Table */}
+              <div className="md:col-span-2 space-y-3">
+                <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Account Holder Name</p>
+                    <p className="text-sm font-bold text-gray-900">{residentDetails.accountName || residentDetails.societyName}</p>
+                  </div>
+                  <Building2 className="text-gray-400 w-5 h-5" />
+                </div>
+
+                <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Registered PAN Card Number</p>
+                    <p className="text-xs font-mono font-bold text-amber-700">{residentDetails.panNo || 'AAAAA0000A'}</p>
+                  </div>
+                  <CreditCard className="text-amber-500 w-5 h-5" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Bank Name</p>
+                    <p className="text-xs font-bold text-gray-900">{residentDetails.bankName || 'Not Specified'}</p>
+                    <p className="text-[11px] text-gray-500">{residentDetails.branchName || ''}</p>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 relative group">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Account Number</p>
+                        <p className="text-xs font-mono font-bold text-gray-900">{residentDetails.accountNo || 'Not Specified'}</p>
+                      </div>
+                      {residentDetails.accountNo && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(residentDetails.accountNo, 'accountNo')}
+                          className="p-1 text-gray-400 hover:text-[#5a32fa] transition-colors"
+                          title="Copy Account Number"
+                        >
+                          {copiedField === 'accountNo' ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">IFSC Code</p>
+                    <p className="text-xs font-mono font-bold text-gray-900">{residentDetails.ifscCode || 'Not Specified'}</p>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 relative">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">UPI ID</p>
+                        <p className="text-xs font-mono font-bold text-indigo-600">{residentDetails.upiId || 'Not Specified'}</p>
+                      </div>
+                      {residentDetails.upiId && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(residentDetails.upiId, 'upiId')}
+                          className="p-1 text-gray-400 hover:text-[#5a32fa] transition-colors"
+                          title="Copy UPI ID"
+                        >
+                          {copiedField === 'upiId' ? <Check size={16} className="text-green-600" /> : <Copy size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* QR Code Container */}
+              <div className="flex flex-col items-center justify-center p-4 bg-indigo-50/60 border border-indigo-100 rounded-2xl text-center">
+                <div className="w-36 h-36 bg-white p-2.5 rounded-xl shadow-md border border-gray-200 mb-2 relative flex items-center justify-center">
+                  <img 
+                    src={qrCodeApiUrl} 
+                    alt="UPI Payment QR Code" 
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className="flex items-center space-x-1 text-[11px] font-bold text-[#5a32fa]">
+                  <QrCode size={14} />
+                  <span>Scan & Pay via Any UPI App</span>
+                </div>
+                <p className="text-[10px] text-gray-500 mt-0.5">GPay • PhonePe • Paytm • BHIM</p>
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
         {/* Total & Action Buttons at Bottom */}
-        <div className="mt-10 pt-6">
+        <div className="mt-10 pt-2">
           <div className="bg-[#121026] text-white p-5 rounded-2xl flex justify-between items-center mb-5">
             <div>
               <p className="text-xs text-gray-400 uppercase font-semibold tracking-wide">Total Receipt Amount</p>
@@ -343,7 +513,7 @@ const FormFillUp = () => {
               ) : (
                 <Save size={18} className="mr-2" />
               )}
-              <span>{loadingSave ? 'Saving to Database...' : 'Save & Store Receipt'}</span>
+              <span>{loadingSave ? 'Submitting...' : 'Save & Submit'}</span>
             </button>
           </div>
         </div>

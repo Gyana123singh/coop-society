@@ -12,6 +12,12 @@ const generateReceiptPDF = (receipt, vendor) => {
   const societyName = vendor?.name || 'Mandovi Nagar Co-Op. Housing Society Ltd.,';
   const societyAddress = vendor?.address || 'Dada Vaidya Road, Panaji - Goa.';
   const regNo = vendor?.regNo || 'HSG-(a)-70/GOA';
+  const panNo = vendor?.panNo || 'AAAAA0000A';
+  const gstNo = vendor?.gstNo || '30AAAAA0000A1Z5';
+  const bankName = vendor?.bankName || 'State Bank of India';
+  const accountNo = vendor?.accountNo || '38492019482';
+  const ifscCode = vendor?.ifscCode || 'SBIN0001234';
+  const upiId = vendor?.upiId || 'mandovi.society@sbi';
   const signatureText = vendor?.authorisedSignature || `For ${societyName}`;
 
   // Border Around Receipt
@@ -26,11 +32,11 @@ const generateReceiptPDF = (receipt, vendor) => {
     .text(societyName.toUpperCase(), { align: 'center' });
 
   doc
-    .fontSize(10)
+    .fontSize(9)
     .font('Helvetica')
     .fillColor('#4A5568')
     .text(societyAddress, { align: 'center' })
-    .text(`Reg. No: ${regNo}`, { align: 'center' });
+    .text(`Reg. No: ${regNo} | PAN: ${panNo} | GSTIN: ${gstNo}`, { align: 'center' });
 
   doc.moveDown(0.5);
 
@@ -152,17 +158,33 @@ const generateReceiptPDF = (receipt, vendor) => {
   doc
     .font('Helvetica-Bold')
     .fontSize(10)
+    .fillColor('#000000')
     .text('Payment Details:', 40, y);
 
-  y += 18;
+  y += 16;
   doc
     .font('Helvetica')
     .fontSize(9)
+    .fillColor('#2D3748')
     .text(`Payment Mode: ${receipt.paymentMode}`, 40, y)
     .text(`Cheque / Ref No: ${receipt.cashChequeNo || 'N/A'}`, 200, y)
     .text(`Drawn On: ${receipt.drawnOn || 'N/A'}`, 380, y);
 
-  y += 60;
+  y += 24;
+  // Society Bank Account Details & UPI QR Info Block
+  doc.rect(40, y, 510, 36).fill('#F0F4F8').stroke('#CBD5E0');
+  doc
+    .fillColor('#1A365D')
+    .font('Helvetica-Bold')
+    .fontSize(9)
+    .text('SOCIETY BANK & UPI PAYMENT DETAILS FOR DIRECT REMITTANCE:', 48, y + 6);
+  doc
+    .font('Helvetica')
+    .fontSize(8)
+    .fillColor('#2D3748')
+    .text(`Bank: ${bankName} | A/C No: ${accountNo} | IFSC: ${ifscCode} | UPI ID: ${upiId}`, 48, y + 20);
+
+  y += 50;
 
   // Footer & Authorised Signature
   doc

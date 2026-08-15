@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Sidebar from './components/Sidebar';
 import TopHeader from './components/TopHeader';
@@ -51,13 +51,9 @@ const App = () => {
     return 'SUPER_ADMIN';
   });
 
-  // Load vendors from localStorage cache or default
-  const [vendors, setVendors] = useState(() => {
-    const saved = localStorage.getItem('coop365_admin_vendors');
-    return saved ? JSON.parse(saved) : DEFAULT_VENDORS;
-  });
-
-  const [activeVendor, setActiveVendor] = useState(vendors[0] || DEFAULT_VENDORS[0]);
+  // Vendors State initialized from MongoDB database
+  const [vendors, setVendors] = useState(DEFAULT_VENDORS);
+  const [activeVendor, setActiveVendor] = useState(DEFAULT_VENDORS[0]);
 
   // Receipts State matching customer side
   const [receipts, setReceipts] = useState([
@@ -99,20 +95,22 @@ const App = () => {
     }
   ]);
 
-  // Fetch Vendors from backend MongoDB Database & Sync LocalStorage
+  // Fetch Vendors from backend MongoDB Database live
   const fetchVendorsFromBackend = async () => {
     try {
-      const res = await axios.get('/api/v1/auth/public-vendors');
+      const res = await axios.get(`/api/v1/auth/public-vendors?t=${Date.now()}`);
       if (res.data?.success && res.data.data.vendors.length > 0) {
         const fetched = res.data.data.vendors;
         setVendors(fetched);
-        localStorage.setItem('coop365_admin_vendors', JSON.stringify(fetched));
-        if (!activeVendor || !fetched.find(v => v._id === activeVendor._id)) {
-          setActiveVendor(fetched[0]);
-        }
+        
+        setActiveVendor(prevActive => {
+          if (!prevActive?._id) return fetched[0];
+          const found = fetched.find(v => String(v._id) === String(prevActive._id));
+          return found ? found : fetched[0];
+        });
       }
     } catch (err) {
-      console.warn('Backend API connection offline, using cached local vendors.');
+      console.warn('Backend API connection notice:', err.message);
     }
   };
 
@@ -158,10 +156,9 @@ const App = () => {
     fetchReceiptsFromBackend();
   }, [adminUser, activeVendor]);
 
-  // Save vendors to localStorage whenever updated
+  // Update vendors state from MongoDB
   const updateVendorsState = (newVendorsList) => {
     setVendors(newVendorsList);
-    localStorage.setItem('coop365_admin_vendors', JSON.stringify(newVendorsList));
   };
 
   // Handle Login Success
@@ -259,9 +256,13 @@ const App = () => {
     try {
       const token = localStorage.getItem('coop365_admin_token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      await axios.put(`/api/v1/super-admin/vendors/${vendorId}`, updatedData, { headers });
+      if (userRole === 'SUPER_ADMIN') {
+        await axios.put(`/api/v1/super-admin/vendors/${vendorId}`, updatedData, { headers });
+      } else {
+        await axios.put('/api/v1/vendors/profile', updatedData, { headers });
+      }
     } catch (err) {
-      console.warn('Backend API update failed, updating local state.');
+      console.warn('Backend API update notice, updating local state:', err?.response?.data || err.message);
     }
     const updatedList = vendors.map(v => v._id === vendorId ? { ...v, ...updatedData } : v);
     updateVendorsState(updatedList);
@@ -286,12 +287,32 @@ const App = () => {
     }
   };
 
+  // Open PDF Voucher Handler
+  const handleOpenPDF = (rcpt) => {
+    const token = localStorage.getItem('coop365_admin_token') || 'superadmin_jwt_token';
+    const vendorQuery = activeVendor?._id ? `&vendorId=${activeVendor._id}` : '';
+    if (rcpt._id && typeof rcpt._id === 'string' && rcpt._id.length > 10) {
+      window.open(`/api/v1/receipts/${rcpt._id}/pdf?token=${token}${vendorQuery}`, '_blank');
+    } else {
+      alert(`Opening PDF Voucher for Receipt #${rcpt.receiptNo}`);
+    }
+  };
+
   // Render Admin Login Screen if not authenticated
   if (!adminUser) {
     return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
   }
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const mainContentRef = useRef(null);
+
+  // Auto reset scroll position to top whenever active view or housing society changes
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = 0;
+    }
+  }, [activeView, activeVendor?._id]);
 
   // Stats calculation
   const stats = {
@@ -303,7 +324,7 @@ const App = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#0b0f19] text-slate-100 font-sans relative overflow-x-hidden">
+    <div className="flex h-screen max-h-screen w-screen bg-[#0b0f19] text-slate-100 font-sans relative overflow-hidden">
       {/* Mobile Drawer Overlay */}
       {isMobileSidebarOpen && (
         <div 
@@ -326,7 +347,7 @@ const App = () => {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 w-full">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Header */}
         <TopHeader
           activeVendor={activeVendor}
@@ -337,7 +358,7 @@ const App = () => {
         />
 
         {/* View Content */}
-        <main className="flex-1 p-3 sm:p-6 overflow-y-auto">
+        <main ref={mainContentRef} className="flex-1 p-3 sm:p-6 overflow-y-auto scroll-smooth">
           {activeView === 'dashboard' && userRole === 'SUPER_ADMIN' && (
             <SuperAdminDashboard
               stats={stats}
@@ -360,24 +381,21 @@ const App = () => {
               receipts={receipts}
               activeVendor={activeVendor}
               onRefreshReceipts={fetchReceiptsFromBackend}
-              onOpenPDF={(rcpt) => {
-                const token = localStorage.getItem('coop365_admin_token');
-                if (rcpt._id && typeof rcpt._id === 'string' && rcpt._id.length > 10) {
-                  window.open(`/api/v1/receipts/${rcpt._id}/pdf?token=${token}`, '_blank');
-                } else {
-                  alert(`Opening PDF Voucher for Receipt #${rcpt.receiptNo}`);
-                }
-              }}
+              onOpenPDF={handleOpenPDF}
               onDeleteReceipt={handleDeleteReceipt}
             />
           )}
 
           {activeView === 'reports' && (
-            <FinancialReports activeVendor={activeVendor} receipts={receipts} />
+            <FinancialReports activeVendor={activeVendor} />
           )}
 
           {activeView === 'members' && (
-            <MemberManager activeVendor={activeVendor} />
+            <MemberManager 
+              activeVendor={activeVendor} 
+              receipts={receipts}
+              onOpenPDF={handleOpenPDF}
+            />
           )}
 
           {activeView === 'settings' && (

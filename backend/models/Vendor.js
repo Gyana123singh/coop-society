@@ -16,6 +16,54 @@ const vendorSchema = new mongoose.Schema({
     required: [true, 'Registration number is required'],
     trim: true
   },
+  panNo: {
+    type: String,
+    trim: true,
+    default: 'AAAAA0000A'
+  },
+  panDocUrl: {
+    type: String,
+    default: ''
+  },
+  gstNo: {
+    type: String,
+    trim: true,
+    default: '30AAAAA0000A1Z5'
+  },
+  bankName: {
+    type: String,
+    trim: true,
+    default: 'State Bank of India'
+  },
+  accountName: {
+    type: String,
+    trim: true,
+    default: 'Mandovi Nagar Co-Op. Housing Society Ltd.'
+  },
+  accountNo: {
+    type: String,
+    trim: true,
+    default: '38492019482'
+  },
+  ifscCode: {
+    type: String,
+    trim: true,
+    default: 'SBIN0001234'
+  },
+  branchName: {
+    type: String,
+    trim: true,
+    default: 'Panaji Branch'
+  },
+  upiId: {
+    type: String,
+    trim: true,
+    default: 'mandovi.society@sbi'
+  },
+  qrCodeUrl: {
+    type: String,
+    default: ''
+  },
   authorisedSignature: { 
     type: String, 
     default: 'For Housing Society Ltd.,' 

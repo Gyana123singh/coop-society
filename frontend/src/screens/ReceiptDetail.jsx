@@ -174,8 +174,10 @@ const ReceiptDetail = () => {
             <p className="text-[9px] font-bold leading-tight mb-0.5">{residentDetails.societyName}</p>
             <p className="text-[7px] text-gray-600 leading-tight">{residentDetails.address}</p>
             <p className="text-[6px] text-gray-500 leading-tight">Email: {residentDetails.email} | Phone: {residentDetails.phone || '+91 98221 23456'}</p>
-            <div className="flex justify-between mt-1.5 text-[7px]">
+            <div className="flex flex-wrap justify-between mt-1 text-[6.5px]">
               <span className="font-bold">Reg. No: {residentDetails.registrationNo}</span>
+              <span className="font-bold">PAN: {residentDetails.panNo || 'AAAAA0000A'}</span>
+              <span className="font-bold">GSTIN: {residentDetails.gstNo || '30AAAAA0000A1Z5'}</span>
               <span className="font-bold">Date : {targetReceipt.date}</span>
             </div>
           </div>
@@ -238,7 +240,7 @@ const ReceiptDetail = () => {
 
         {/* ── Payment & Total ── */}
         <div className="flex justify-between items-start gap-3 mb-2">
-          <div className="space-y-1.5 text-[7px] flex-1">
+          <div className="space-y-1 text-[7px] flex-1">
             <div className="flex items-end">
               <span className="font-bold mr-1 whitespace-nowrap">Mode / Ref No.:</span>
               <span className="flex-1 border-b border-black pb-[1px] px-1">{targetReceipt.paymentMode} ({targetReceipt.refNo || targetReceipt.cashChequeNo || 'N/A'})</span>
@@ -252,17 +254,35 @@ const ReceiptDetail = () => {
               <span className="w-24 border-b border-black pb-[1px] px-1">{targetReceipt.paymentDate || targetReceipt.date}</span>
             </div>
           </div>
-          <div className="border border-black p-2 text-right shrink-0 min-w-[90px]">
-            <p className="text-[6px] text-gray-500">Total Rs.</p>
-            <p className="text-[11px] font-bold">Rs. {parseFloat(targetReceipt.totalAmount || 0).toFixed(2)}</p>
+          <div className="border border-black p-1.5 text-right shrink-0 min-w-[85px]">
+            <p className="text-[5.5px] text-gray-500">Total Rs.</p>
+            <p className="text-[10px] font-bold">Rs. {parseFloat(targetReceipt.totalAmount || 0).toFixed(2)}</p>
+          </div>
+        </div>
+
+        {/* ── Bank Details & QR Code Box (Mobile Paper) ── */}
+        <div className="border border-gray-300 bg-gray-50 p-2 rounded mb-2 flex items-center justify-between gap-2">
+          <div className="text-[6px] space-y-0.5 flex-1">
+            <p className="font-bold text-[#5a32fa] uppercase">Society Bank & UPI Details:</p>
+            <p><span className="font-semibold">Bank:</span> {residentDetails.bankName || 'State Bank of India'} ({residentDetails.branchName || 'Panaji'})</p>
+            <p><span className="font-semibold">A/C No:</span> {residentDetails.accountNo || '38492019482'} | <span className="font-semibold">IFSC:</span> {residentDetails.ifscCode || 'SBIN0001234'}</p>
+            <p className="font-semibold text-indigo-700">UPI ID: {residentDetails.upiId || 'mandovi.society@sbi'}</p>
+          </div>
+          <div className="shrink-0 text-center">
+            <img 
+              src={residentDetails.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`upi://pay?pa=${residentDetails.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(residentDetails.societyName)}&cu=INR`)}`}
+              alt="UPI QR"
+              className="w-12 h-12 object-contain border border-gray-300 bg-white p-0.5 rounded"
+            />
+            <p className="text-[5px] font-bold text-gray-600 mt-0.5">Scan to Pay</p>
           </div>
         </div>
 
         {/* ── Signatures ── */}
-        <div className="mt-10 flex justify-between items-end">
+        <div className="mt-4 flex justify-between items-end">
           <p className="text-[6px] text-gray-400 italic">*Cheque subject to Realisation.</p>
           <div className="text-right text-[7px]">
-            <p className="font-bold mb-5">{residentDetails.authorisedSignature || `For ${residentDetails.societyName}`}</p>
+            <p className="font-bold mb-4">{residentDetails.authorisedSignature || `For ${residentDetails.societyName}`}</p>
             <div className="border-t border-black w-28 ml-auto mb-0.5"></div>
             <p className="font-bold">Authorised Signature</p>
           </div>
@@ -346,9 +366,11 @@ const ReceiptDetail = () => {
                   <p className="text-[22px] font-bold mb-1">{residentDetails.societyName}</p>
                   <p className="text-sm text-gray-700 mb-0.5">{residentDetails.address}</p>
                   <p className="text-xs text-gray-500">Email: {residentDetails.email} | Phone: {residentDetails.phone || '+91 98221 23456'}</p>
-                  <div className="flex justify-between mt-4 text-sm px-4">
-                    <span className="font-bold">Reg. No: {residentDetails.registrationNo}</span>
-                    <span className="font-bold">Date : {targetReceipt.date}</span>
+                  <div className="flex justify-between items-center mt-4 text-xs font-bold px-2">
+                    <span>Reg. No: {residentDetails.registrationNo}</span>
+                    <span>PAN: {residentDetails.panNo || 'AAAAA0000A'}</span>
+                    <span>GSTIN: {residentDetails.gstNo || '30AAAAA0000A1Z5'}</span>
+                    <span>Date: {targetReceipt.date}</span>
                   </div>
                 </div>
               </div>
@@ -411,7 +433,27 @@ const ReceiptDetail = () => {
                   <p className="text-2xl font-bold">Rs. {parseFloat(targetReceipt.totalAmount || 0).toFixed(2)}</p>
                 </div>
               </div>
-              <div className="mt-24 flex justify-between items-end">
+
+              {/* Desktop Bank Details & QR Code Block */}
+              <div className="border border-gray-300 bg-gray-50 p-4 rounded-xl mb-6 flex items-center justify-between gap-4">
+                <div className="space-y-1 text-xs flex-1">
+                  <p className="font-bold text-[#5a32fa] uppercase text-xs">Society Bank & UPI Remittance Details:</p>
+                  <p><span className="font-semibold text-gray-700">Account Holder:</span> {residentDetails.accountName || residentDetails.societyName}</p>
+                  <p><span className="font-semibold text-gray-700">Bank & Branch:</span> {residentDetails.bankName || 'State Bank of India'} ({residentDetails.branchName || 'Panaji Branch'})</p>
+                  <p><span className="font-semibold text-gray-700">Account No:</span> <span className="font-mono font-bold text-gray-900">{residentDetails.accountNo || '38492019482'}</span> | <span className="font-semibold text-gray-700">IFSC Code:</span> <span className="font-mono font-bold text-gray-900">{residentDetails.ifscCode || 'SBIN0001234'}</span></p>
+                  <p><span className="font-semibold text-gray-700">Official UPI ID:</span> <span className="font-mono font-bold text-indigo-700">{residentDetails.upiId || 'mandovi.society@sbi'}</span></p>
+                </div>
+                <div className="shrink-0 text-center">
+                  <img 
+                    src={residentDetails.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`upi://pay?pa=${residentDetails.upiId || 'mandovi.society@sbi'}&pn=${encodeURIComponent(residentDetails.societyName)}&cu=INR`)}`}
+                    alt="UPI Payment QR Code"
+                    className="w-20 h-20 object-contain border border-gray-300 bg-white p-1 rounded-lg shadow-sm"
+                  />
+                  <p className="text-[10px] font-bold text-gray-600 mt-1">Scan to Pay via UPI</p>
+                </div>
+              </div>
+
+              <div className="mt-12 flex justify-between items-end">
                 <p className="text-xs text-gray-400 italic">*Cheque subject to Realisation.</p>
                 <div className="text-right text-sm">
                   <p className="font-bold mb-12">{residentDetails.authorisedSignature || `For ${residentDetails.societyName}`}</p>

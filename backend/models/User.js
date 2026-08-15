@@ -19,6 +19,20 @@ const userSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  flatNo: {
+    type: String,
+    trim: true,
+    default: 'Flat A-101'
+  },
+  panNo: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  panDocUrl: {
+    type: String,
+    default: ''
+  },
   password: { 
     type: String,
     select: false

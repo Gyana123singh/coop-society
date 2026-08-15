@@ -39,6 +39,14 @@ connectDB().then(async () => {
         name: 'Mandovi Nagar Co-Op. Housing Society Ltd.,',
         address: 'Porvorim, Alto Porvorim, Goa 403521',
         regNo: 'HSG-(a)-70/GOA',
+        panNo: 'AAAAA0000A',
+        gstNo: '30AAAAA0000A1Z5',
+        bankName: 'State Bank of India',
+        accountName: 'Mandovi Nagar Co-Op. Housing Society Ltd.',
+        accountNo: '38492019482',
+        ifscCode: 'SBIN0001234',
+        branchName: 'Panaji Branch',
+        upiId: 'mandovi.society@sbi',
         status: 'ACTIVE'
       });
 
@@ -67,10 +75,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-vendor-id', 'Cache-Control', 'Pragma', 'Expires']
 }));
 
-// Rate limiting (200 requests per 15 min window)
+// Rate limiting (generous limits so dev polling & PDF downloads are never blocked)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: process.env.NODE_ENV === 'production' ? 10000 : 100000,
+  skip: (req) => req.path.includes('/pdf') || req.path.includes('/public-vendors'),
   message: { success: false, message: 'Too many requests from this IP, please try again later.' }
 });
 app.use('/api/', limiter);

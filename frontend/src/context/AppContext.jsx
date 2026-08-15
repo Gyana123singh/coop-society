@@ -12,6 +12,16 @@ const defaultSocietyDetails = {
   societyName: "Mandovi Nagar Co-Op. Housing Society Ltd.",
   address: "Dada Vaidya Road, Panaji - Goa",
   registrationNo: "HSG-(a)-70/GOA",
+  panNo: "AAAAA0000A",
+  panDocUrl: "",
+  gstNo: "30AAAAA0000A1Z5",
+  bankName: "State Bank of India",
+  accountName: "Mandovi Nagar Co-Op. Housing Society Ltd.",
+  accountNo: "38492019482",
+  ifscCode: "SBIN0001234",
+  branchName: "Panaji Branch",
+  upiId: "mandovi.society@sbi",
+  qrCodeUrl: "",
   authorisedSignature: "For Mandovi Nagar Co-Op. Housing Society Ltd.,"
 };
 
@@ -21,19 +31,29 @@ export const AppProvider = ({ children }) => {
     if (savedUser) {
       try {
         const parsed = JSON.parse(savedUser);
-        if (parsed.vendor || parsed.vendorName) {
-          return {
-            name: parsed.name || defaultSocietyDetails.name,
-            email: parsed.vendorEmail || parsed.email || defaultSocietyDetails.email,
-            phone: parsed.vendorPhone || defaultSocietyDetails.phone,
-            role: parsed.role || defaultSocietyDetails.role,
-            flatNo: parsed.flatNo || defaultSocietyDetails.flatNo,
-            societyName: parsed.vendorName || parsed.vendor?.name || defaultSocietyDetails.societyName,
-            address: parsed.vendorAddress || parsed.vendor?.address || defaultSocietyDetails.address,
-            registrationNo: parsed.vendorRegNo || parsed.vendor?.regNo || defaultSocietyDetails.registrationNo,
-            authorisedSignature: parsed.vendor?.authorisedSignature || defaultSocietyDetails.authorisedSignature
-          };
-        }
+        const v = parsed.vendor || {};
+        return {
+          name: parsed.name || defaultSocietyDetails.name,
+          email: parsed.email || parsed.vendorEmail || defaultSocietyDetails.email,
+          phone: parsed.phone || parsed.vendorPhone || defaultSocietyDetails.phone,
+          role: parsed.role || defaultSocietyDetails.role,
+          flatNo: parsed.flatNo || defaultSocietyDetails.flatNo,
+          vendorId: parsed.vendorId || v._id || null,
+          societyName: parsed.vendorName || v.name || defaultSocietyDetails.societyName,
+          address: parsed.vendorAddress || v.address || defaultSocietyDetails.address,
+          registrationNo: parsed.vendorRegNo || v.regNo || defaultSocietyDetails.registrationNo,
+          panNo: v.panNo || defaultSocietyDetails.panNo,
+          panDocUrl: v.panDocUrl || defaultSocietyDetails.panDocUrl,
+          gstNo: v.gstNo || defaultSocietyDetails.gstNo,
+          bankName: v.bankName || defaultSocietyDetails.bankName,
+          accountName: v.accountName || defaultSocietyDetails.accountName,
+          accountNo: v.accountNo || defaultSocietyDetails.accountNo,
+          ifscCode: v.ifscCode || defaultSocietyDetails.ifscCode,
+          branchName: v.branchName || defaultSocietyDetails.branchName,
+          upiId: v.upiId || defaultSocietyDetails.upiId,
+          qrCodeUrl: v.qrCodeUrl || defaultSocietyDetails.qrCodeUrl,
+          authorisedSignature: v.authorisedSignature || defaultSocietyDetails.authorisedSignature
+        };
       } catch (e) {}
     }
     return defaultSocietyDetails;
@@ -41,25 +61,47 @@ export const AppProvider = ({ children }) => {
 
   const [receipts, setReceipts] = useState([]);
 
-  // Fetch live vendor/society details from backend MongoDB
+  // Fetch live vendor/society details directly from MongoDB database
   const fetchLiveSocietyDetails = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const savedUserStr = localStorage.getItem('coop365_user');
+      let userVendorId = null;
+      if (savedUserStr) {
+        try {
+          const parsed = JSON.parse(savedUserStr);
+          userVendorId = parsed.vendorId || (parsed.vendor ? parsed.vendor._id : null);
+        } catch(e) {}
+      }
+
       const res = await axios.get(`${API_URL}/api/v1/auth/public-vendors?t=${Date.now()}`);
       if (res.data?.success && res.data.data?.vendors?.length > 0) {
-        const liveVendor = res.data.data.vendors[0]; // Active society profile
+        const vendorsList = res.data.data.vendors;
+        const liveVendor = (userVendorId && vendorsList.find(v => String(v._id) === String(userVendorId))) || vendorsList[0];
         setResidentDetails(prev => ({
           ...prev,
-          societyName: liveVendor.name || prev.societyName,
-          address: liveVendor.address || prev.address,
-          registrationNo: liveVendor.regNo || prev.registrationNo,
+          societyName: liveVendor.name !== undefined ? liveVendor.name : prev.societyName,
+          address: liveVendor.address !== undefined ? liveVendor.address : prev.address,
+          registrationNo: liveVendor.regNo !== undefined ? liveVendor.regNo : prev.registrationNo,
+          panNo: liveVendor.panNo !== undefined ? liveVendor.panNo : prev.panNo,
+          panDocUrl: liveVendor.panDocUrl !== undefined ? liveVendor.panDocUrl : prev.panDocUrl,
+          gstNo: liveVendor.gstNo !== undefined ? liveVendor.gstNo : prev.gstNo,
+          bankName: liveVendor.bankName !== undefined ? liveVendor.bankName : prev.bankName,
+          accountName: liveVendor.accountName !== undefined ? liveVendor.accountName : prev.accountName,
+          accountNo: liveVendor.accountNo !== undefined ? liveVendor.accountNo : prev.accountNo,
+          ifscCode: liveVendor.ifscCode !== undefined ? liveVendor.ifscCode : prev.ifscCode,
+          branchName: liveVendor.branchName !== undefined ? liveVendor.branchName : prev.branchName,
+          upiId: liveVendor.upiId !== undefined ? liveVendor.upiId : prev.upiId,
+          qrCodeUrl: liveVendor.qrCodeUrl !== undefined ? liveVendor.qrCodeUrl : prev.qrCodeUrl,
+          authorisedSignature: liveVendor.authorisedSignature !== undefined ? liveVendor.authorisedSignature : prev.authorisedSignature,
+          contactEmail: liveVendor.contactEmail !== undefined ? liveVendor.contactEmail : prev.contactEmail,
+          contactPhone: liveVendor.contactPhone !== undefined ? liveVendor.contactPhone : prev.contactPhone,
           email: liveVendor.contactEmail || prev.email,
-          phone: liveVendor.contactPhone || prev.phone,
-          authorisedSignature: liveVendor.authorisedSignature || prev.authorisedSignature
+          phone: liveVendor.contactPhone || prev.phone
         }));
       }
     } catch (err) {
-      console.warn('[AppContext] Live society fetch notice:', err.message);
+      console.warn('[AppContext] Live society MongoDB fetch notice:', err.message);
     }
   };
 
@@ -109,6 +151,13 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     fetchLiveSocietyDetails();
     fetchReceiptsFromBackend();
+
+    // Live auto-polling every 10 seconds for Admin Settings sync
+    const timer = setInterval(() => {
+      fetchLiveSocietyDetails();
+    }, 10000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const addReceipt = (receipt) => {

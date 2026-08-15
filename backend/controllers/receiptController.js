@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Receipt = require('../models/Receipt');
 const Vendor = require('../models/Vendor');
 const convertToWords = require('../utils/numberToWords');
@@ -275,27 +276,126 @@ const deleteReceipt = async (req, res, next) => {
 // @access  Private
 const downloadReceiptPDF = async (req, res, next) => {
   try {
-    const receipt = await Receipt.findOne({
-      _id: req.params.id,
-      vendorId: req.vendorId,
-      isDeleted: false
-    });
-
+    let receipt;
+    if (req.vendorId) {
+      receipt = await Receipt.findOne({
+        _id: req.params.id,
+        vendorId: req.vendorId,
+        isDeleted: false
+      });
+    }
+    
     if (!receipt) {
-      return errorResponse(res, 404, 'Receipt not found');
+      receipt = await Receipt.findOne({
+        _id: req.params.id,
+        isDeleted: false
+      });
     }
 
-    const vendor = await Vendor.findById(req.vendorId);
+    if (!receipt) {
+      return errorResponse(res, 404, 'Receipt voucher not found');
+    }
+
+    const targetVendorId = req.vendorId || receipt.vendorId;
+    const vendor = await Vendor.findById(targetVendorId);
 
     const pdfDoc = generateReceiptPDF(receipt, vendor);
+
+    const filename = `Receipt_${receipt.receiptNo || 'Voucher'}_${(receipt.flatShopNo || 'Society').replace(/\s+/g, '_')}.pdf`;
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader(
       'Content-Disposition',
-      `inline; filename=Receipt_${receipt.receiptNo}_${receipt.flatShopNo.replace(/\s+/g, '_')}.pdf`
+      `inline; filename="${filename}"`
     );
 
     pdfDoc.pipe(res);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @desc    Get Real-Time Financial Collection Analytics
+// @route   GET /api/v1/receipts/analytics
+// @access  Private
+const getCollectionAnalytics = async (req, res, next) => {
+  try {
+    const { vendorId, paymentMode, startDate, endDate, search } = req.query;
+    const targetVendorId = vendorId || req.vendorId;
+
+    const matchQuery = { isDeleted: false };
+    if (targetVendorId && typeof targetVendorId === 'string' && targetVendorId.length === 24) {
+      matchQuery.vendorId = new mongoose.Types.ObjectId(targetVendorId);
+    }
+    if (paymentMode && paymentMode !== 'ALL') {
+      matchQuery.paymentMode = paymentMode;
+    }
+    if (startDate || endDate) {
+      matchQuery.createdAt = {};
+      if (startDate) matchQuery.createdAt.$gte = new Date(startDate);
+      if (endDate) matchQuery.createdAt.$lte = new Date(endDate);
+    }
+    if (search) {
+      matchQuery.$or = [
+        { receivedFrom: { $regex: search, $options: 'i' } },
+        { flatShopNo: { $regex: search, $options: 'i' } },
+        { receiptNo: { $regex: search, $options: 'i' } },
+        { cashChequeNo: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const receipts = await Receipt.find(matchQuery)
+      .populate('createdBy', 'name email role')
+      .sort({ createdAt: -1 });
+
+    const totalRevenue = receipts.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
+    const totalCount = receipts.length;
+    const avgReceiptAmount = totalCount > 0 ? (totalRevenue / totalCount) : 0;
+
+    // Payment Mode Breakdown
+    const paymentModeMap = {};
+    receipts.forEach(r => {
+      const mode = r.paymentMode || 'Cash';
+      if (!paymentModeMap[mode]) paymentModeMap[mode] = { count: 0, amount: 0 };
+      paymentModeMap[mode].count += 1;
+      paymentModeMap[mode].amount += (parseFloat(r.totalAmount) || 0);
+    });
+
+    const paymentModes = Object.keys(paymentModeMap).map(mode => ({
+      mode,
+      amount: paymentModeMap[mode].amount,
+      count: paymentModeMap[mode].count,
+      percentage: totalRevenue > 0 ? Math.round((paymentModeMap[mode].amount / totalRevenue) * 100) : 0
+    })).sort((a, b) => b.amount - a.amount);
+
+    // Particulars Breakdown
+    const categoryMap = {};
+    receipts.forEach(r => {
+      if (r.items && Array.isArray(r.items) && r.items.length > 0) {
+        r.items.forEach(it => {
+          const title = it.title || it.name || 'Maintenance Charges';
+          const amt = parseFloat(it.amount) || 0;
+          categoryMap[title] = (categoryMap[title] || 0) + amt;
+        });
+      } else {
+        categoryMap['Maintenance Charges'] = (categoryMap['Maintenance Charges'] || 0) + (parseFloat(r.totalAmount) || 0);
+      }
+    });
+
+    const categoryData = Object.keys(categoryMap).map(title => {
+      const amt = categoryMap[title];
+      const percentage = totalRevenue > 0 ? Math.round((amt / totalRevenue) * 100) : 0;
+      return { title, amount: amt, percentage };
+    }).sort((a, b) => b.amount - a.amount);
+
+    return successResponse(res, 200, 'Real-time collection analytics retrieved successfully', {
+      totalRevenue,
+      totalCount,
+      avgReceiptAmount,
+      paymentModes,
+      categoryData,
+      receipts
+    });
   } catch (err) {
     next(err);
   }
@@ -308,5 +408,6 @@ module.exports = {
   getReceiptById,
   updateReceipt,
   deleteReceipt,
-  downloadReceiptPDF
+  downloadReceiptPDF,
+  getCollectionAnalytics
 };
