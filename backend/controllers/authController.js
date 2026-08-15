@@ -35,7 +35,7 @@ const generateToken = (user) => {
 // @access  Public
 const getPublicVendors = async (req, res, next) => {
   try {
-    let vendors = await Vendor.find({ status: 'ACTIVE' }).sort({ createdAt: -1 });
+    let vendors = await Vendor.find({ status: { $ne: 'SUSPENDED' } }).sort({ createdAt: -1 });
 
     // Auto-seed default initial society if database has 0 active vendors
     if (vendors.length === 0) {

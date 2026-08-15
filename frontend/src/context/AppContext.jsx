@@ -61,7 +61,7 @@ export const AppProvider = ({ children }) => {
 
   const [receipts, setReceipts] = useState([]);
 
-  // Fetch live vendor/society details directly from MongoDB database
+  // Fetch live vendor/society details directly from MongoDB database or local cache
   const fetchLiveSocietyDetails = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -74,9 +74,29 @@ export const AppProvider = ({ children }) => {
         } catch(e) {}
       }
 
-      const res = await axios.get(`${API_URL}/api/v1/auth/public-vendors?t=${Date.now()}`);
-      if (res.data?.success && res.data.data?.vendors?.length > 0) {
-        const vendorsList = res.data.data.vendors;
+      let vendorsList = [];
+      try {
+        const res = await axios.get(`${API_URL}/api/v1/auth/public-vendors?t=${Date.now()}`);
+        if (res.data?.success && res.data.data?.vendors?.length > 0) {
+          vendorsList = res.data.data.vendors;
+        }
+      } catch (e) {}
+
+      const localSaved = localStorage.getItem('coop365_admin_vendors');
+      if (localSaved) {
+        try {
+          const parsed = JSON.parse(localSaved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            parsed.forEach(lv => {
+              if (lv && lv._id && !vendorsList.some(f => String(f._id) === String(lv._id))) {
+                vendorsList.push(lv);
+              }
+            });
+          }
+        } catch (e) {}
+      }
+
+      if (vendorsList.length > 0) {
         const liveVendor = (userVendorId && vendorsList.find(v => String(v._id) === String(userVendorId))) || vendorsList[0];
         setResidentDetails(prev => ({
           ...prev,

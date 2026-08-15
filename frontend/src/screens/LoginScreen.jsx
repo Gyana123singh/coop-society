@@ -15,26 +15,43 @@ const LoginScreen = () => {
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-  // Fetch active housing societies directly from MongoDB
+  // Fetch active housing societies directly from MongoDB & local persistent cache
   const fetchLiveSocieties = async () => {
     setLoadingSocieties(true);
     setError('');
+    let fetched = [];
     try {
       const res = await axios.get(`${API_URL}/api/v1/auth/public-vendors?t=${Date.now()}`);
       if (res.data?.success && res.data.data?.vendors?.length > 0) {
-        const realVendors = res.data.data.vendors;
-        setSocieties(realVendors);
-        setSelectedSocietyId(realVendors[0]._id);
-      } else {
-        setSocieties([]);
-        setSelectedSocietyId('');
+        fetched = res.data.data.vendors;
       }
     } catch (err) {
-      console.error('Failed to fetch real housing societies from MongoDB:', err);
-      setError('Could not connect to backend server. Ensure Express backend is running.');
-    } finally {
-      setLoadingSocieties(false);
+      console.warn('Failed to fetch real housing societies from MongoDB API:', err.message);
     }
+
+    // Merge with local storage cache (so newly provisioned businesses in dev/offline mode appear immediately)
+    const localSaved = localStorage.getItem('coop365_admin_vendors');
+    if (localSaved) {
+      try {
+        const parsed = JSON.parse(localSaved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed.forEach(lv => {
+            if (lv && lv._id && !fetched.some(f => String(f._id) === String(lv._id))) {
+              fetched.push(lv);
+            }
+          });
+        }
+      } catch (e) {}
+    }
+
+    if (fetched.length > 0) {
+      setSocieties(fetched);
+      setSelectedSocietyId(fetched[0]._id);
+    } else {
+      setSocieties([]);
+      setSelectedSocietyId('');
+    }
+    setLoadingSocieties(false);
   };
 
   useEffect(() => {
