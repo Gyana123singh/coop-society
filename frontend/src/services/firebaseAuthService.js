@@ -2,22 +2,25 @@ import { auth } from '../firebase/firebaseConfig';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 /**
- * Initializes Firebase Recaptcha Verifier safely if element exists
+ * Initializes Firebase Invisible Recaptcha Verifier silently.
+ * Dynamically creates DOM container if missing.
  * @param {string} containerId - DOM Element ID
  */
 export const initRecaptchaVerifier = (containerId = 'recaptcha-container') => {
   try {
-    const el = document.getElementById(containerId);
+    let el = document.getElementById(containerId);
     if (!el) {
-      console.warn(`[Firebase Auth] Element with id '${containerId}' not found.`);
-      return null;
+      el = document.createElement('div');
+      el.id = containerId;
+      el.style.display = 'none';
+      document.body.appendChild(el);
     }
 
     if (window.recaptchaVerifier) {
       try {
         window.recaptchaVerifier.clear();
       } catch (e) {
-        console.warn('[Firebase Auth] Error clearing existing recaptchaVerifier:', e);
+        console.warn('[Firebase Auth] Error clearing existing verifier:', e);
       }
       window.recaptchaVerifier = null;
     }
@@ -28,10 +31,10 @@ export const initRecaptchaVerifier = (containerId = 'recaptcha-container') => {
     window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
       size: 'invisible',
       callback: () => {
-        console.log('[Firebase Auth] Recaptcha verified automatically.');
+        console.log('[Firebase Auth] Invisible reCAPTCHA passed automatically.');
       },
       'expired-callback': () => {
-        console.warn('[Firebase Auth] Recaptcha expired. Resetting verifier.');
+        console.warn('[Firebase Auth] reCAPTCHA expired. Auto-resetting verifier.');
         if (window.recaptchaVerifier) {
           try { window.recaptchaVerifier.clear(); } catch (e) {}
           window.recaptchaVerifier = null;
@@ -41,22 +44,19 @@ export const initRecaptchaVerifier = (containerId = 'recaptcha-container') => {
 
     return window.recaptchaVerifier;
   } catch (err) {
-    console.error('[Firebase Recaptcha Error]', err?.message || err);
+    console.warn('[Firebase Recaptcha Warning]', err?.message || err);
     return null;
   }
 };
 
 /**
  * Sends SMS OTP via Firebase Auth
- * @param {string} phoneNumber - Mobile number with country code (e.g. '+918280057771')
+ * @param {string} phoneNumber - Mobile number with country code (e.g. '+919822123456')
  */
 export const sendFirebasePhoneOTP = async (phoneNumber) => {
   let appVerifier = window.recaptchaVerifier;
   if (!appVerifier) {
     appVerifier = initRecaptchaVerifier('recaptcha-container');
-  }
-  if (!appVerifier) {
-    throw new Error('reCAPTCHA verifier container missing. Unable to send SMS.');
   }
 
   console.log(`[Firebase Phone Auth] Dispatching SMS OTP to ${phoneNumber}...`);
@@ -65,6 +65,7 @@ export const sendFirebasePhoneOTP = async (phoneNumber) => {
     window.confirmationResult = confirmationResult;
     return confirmationResult;
   } catch (err) {
+    console.error('[Firebase Phone Auth Error]', err?.code || err?.message || err);
     if (window.recaptchaVerifier) {
       try { window.recaptchaVerifier.clear(); } catch (e) {}
       window.recaptchaVerifier = null;
@@ -94,4 +95,3 @@ export const verifyFirebasePhoneOTP = async (confirmationResult, otpCode) => {
     phoneNumber: user.phoneNumber
   };
 };
-
