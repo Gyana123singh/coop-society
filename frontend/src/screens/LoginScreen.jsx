@@ -1,29 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Building2, Loader2, ChevronDown, RefreshCw, KeyRound, ShieldCheck } from 'lucide-react';
+import { Building2, Loader2, ChevronDown, RefreshCw, ShieldCheck, Phone, ArrowRight } from 'lucide-react';
 import axios from 'axios';
-import { useAuth } from '../context/AuthContext';
-
-const defaultTestMembers = [
-  { _id: '1', name: 'Mr. Rahul Sharma', phone: '+91 98221 23456', email: 'secretary@mandovinagar.org', flatNo: 'Flat A-101', role: 'SECRETARY' },
-  { _id: '2', name: 'Mrs. Sunita Patel', phone: '+91 98230 11223', email: 'treasurer@mandovinagar.org', flatNo: 'Flat A-204', role: 'TREASURER' },
-  { _id: '3', name: 'Mr. Amit Kumar', phone: '+91 98230 45678', email: 'amit@mandovinagar.org', flatNo: 'Flat B-302', role: 'MEMBER' },
-  { _id: '4', name: 'Mrs. Priya Singh', phone: '+91 98231 99887', email: 'gyan123priya@gmail.com', flatNo: 'Flat B-105', role: 'MEMBER' },
-  { _id: '5', name: 'Mr. Gyana Singh', phone: '+91 98221 88776', email: 'gyana@mandovinagar.org', flatNo: 'Flat C-401', role: 'MEMBER' }
-];
+import { sendFirebasePhoneOTP, initRecaptchaVerifier } from '../services/firebaseAuthService';
 
 const LoginScreen = () => {
   const [societies, setSocieties] = useState([]);
   const [loadingSocieties, setLoadingSocieties] = useState(true);
   const [selectedSocietyId, setSelectedSocietyId] = useState('');
-  const [email, setEmail] = useState('secretary@mandovinagar.org');
-  const [password, setPassword] = useState('SecretaryPassword123!');
-  const [showPassword, setShowPassword] = useState(false);
+  
+  // Real-time Firebase Mobile Phone OTP State
+  const [phone, setPhone] = useState('+91 98221 23456');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
-  const { login } = useAuth();
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   // Fetch active housing societies from MongoDB & local persistent cache
@@ -52,7 +43,7 @@ const LoginScreen = () => {
             }
           });
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     if (fetched.length > 0) {
@@ -67,9 +58,14 @@ const LoginScreen = () => {
 
   useEffect(() => {
     fetchLiveSocieties();
+    // Initialize Firebase Recaptcha Verifier safely
+    setTimeout(() => {
+      initRecaptchaVerifier('recaptcha-container');
+    }, 500);
   }, []);
 
-  const handleLogin = async (e) => {
+  // Firebase Phone OTP Login Handler
+  const handleSendOtp = async (e) => {
     e.preventDefault();
 
     if (!selectedSocietyId) {
@@ -77,87 +73,57 @@ const LoginScreen = () => {
       return;
     }
 
-    const cleanEmail = email.toLowerCase().trim();
-    if (!cleanEmail) {
-      setError('Please enter your registered email address.');
-      return;
-    }
-
-    if (!password) {
-      setError('Please enter your password.');
+    if (!phone || phone.trim().length < 8) {
+      setError('Please enter a valid registered mobile phone number.');
       return;
     }
 
     setError('');
     setLoading(true);
 
+    let formattedPhone = phone.trim();
+    if (!formattedPhone.startsWith('+')) {
+      const rawDigits = formattedPhone.replace(/\D/g, '');
+      if (rawDigits.length === 10) {
+        formattedPhone = `+91${rawDigits}`;
+      } else {
+        formattedPhone = `+${rawDigits}`;
+      }
+    }
+
     const targetSociety = societies.find(s => String(s._id) === String(selectedSocietyId)) || societies[0];
 
     try {
-      // 1. Primary Authentication: Backend MongoDB API
-      const res = await axios.post(`${API_URL}/api/v1/auth/login`, {
-        email: cleanEmail,
-        password,
-        vendorId: selectedSocietyId
-      });
-
-      if (res.data?.success && res.data.data?.token) {
-        const { token, user } = res.data.data;
-        login(user, token);
-        navigate('/form');
-        return;
-      }
-    } catch (err) {
-      console.warn('[Login Error] Backend auth failed, checking credentials:', err.response?.data?.message || err.message);
-      
-      // If backend returned explicit authentication error (e.g. 401 Invalid Credentials or 403 Account Inactive)
-      if (err.response && err.response.data?.message) {
-        setError(err.response.data.message);
-        setLoading(false);
-        return;
-      }
-    }
-
-    // 2. Offline / Persistent Local Fallback (For local dev testing without server connection)
-    const vendorKey = selectedSocietyId ? `coop365_admin_members_${selectedSocietyId}` : 'coop365_admin_members_default';
-    const cachedMembersStr = localStorage.getItem(vendorKey) || localStorage.getItem('coop365_admin_members_default');
-    let cachedMembers = defaultTestMembers;
-    
-    if (cachedMembersStr) {
-      try {
-        const parsed = JSON.parse(cachedMembersStr);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          cachedMembers = parsed;
+      const confirmationResult = await sendFirebasePhoneOTP(formattedPhone);
+      navigate('/otp', {
+        state: {
+          phone: formattedPhone,
+          societyId: selectedSocietyId,
+          societyName: targetSociety?.name || 'Housing Society',
+          confirmationResult
         }
-      } catch (e) {}
+      });
+    } catch (err) {
+      console.error('[Firebase Phone Auth Error]', err);
+      let errorMsg = 'Failed to send SMS OTP. Please check your phone number and try again.';
+      if (err.code === 'auth/invalid-phone-number') {
+        errorMsg = 'Invalid phone number format. Please enter a valid number with country code (e.g. +91 98221 23456).';
+      } else if (err.code === 'auth/too-many-requests') {
+        errorMsg = 'Too many OTP requests. Please wait a few minutes before trying again.';
+      } else if (err.message) {
+        errorMsg = err.message;
+      }
+      setError(errorMsg);
+    } finally {
+      setLoading(false);
     }
-
-    const matchedUser = cachedMembers.find(m => m.email && m.email.toLowerCase().trim() === cleanEmail);
-
-    if (matchedUser) {
-      const userObj = {
-        id: matchedUser._id || Date.now(),
-        name: matchedUser.name,
-        email: matchedUser.email,
-        phone: matchedUser.phone || '',
-        flatNo: matchedUser.flatNo || 'Flat A-101',
-        role: matchedUser.role || 'MEMBER',
-        vendorId: targetSociety?._id,
-        vendorName: targetSociety?.name || 'Mandovi Nagar Co-Op. Housing Society Ltd.,',
-        vendorRegNo: targetSociety?.regNo || 'HSG-(a)-70/GOA'
-      };
-
-      login(userObj, 'local-session-token');
-      navigate('/form');
-    } else {
-      setError('Invalid email address or password. Please check your credentials or contact your Housing Society Admin.');
-    }
-
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center p-4">
+      {/* Hidden Firebase Recaptcha Container */}
+      <div id="recaptcha-container"></div>
+
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 font-sans">
 
         {/* Header Graphic */}
@@ -175,17 +141,17 @@ const LoginScreen = () => {
 
           <div className="inline-flex items-center space-x-1.5 bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-semibold mt-2 relative z-10">
             <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Email & Password Credentials</span>
+            <span>Real-time Firebase Phone OTP</span>
           </div>
         </div>
 
         <div className="p-8">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-1.5">Welcome Resident</h2>
-            <p className="text-sm text-gray-500">Select your Housing Society and sign in with your registered email and password.</p>
+            <p className="text-sm text-gray-500">Select your Housing Society and enter your registered mobile number to sign in via Firebase SMS OTP.</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSendOtp} className="space-y-4">
             
             {/* HOUSING SOCIETY DROPDOWN WITH LIVE REFRESH BUTTON */}
             <div>
@@ -237,56 +203,26 @@ const LoginScreen = () => {
               </div>
             </div>
 
-            {/* EMAIL ADDRESS INPUT */}
+            {/* REGISTERED MOBILE PHONE NUMBER INPUT */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                Registered Email Address *
+                Registered Mobile Number *
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Mail className={`h-5 w-5 transition-colors ${error ? 'text-red-400' : 'text-gray-400 group-focus-within:text-[#5a32fa]'}`} />
+                  <Phone className={`h-5 w-5 transition-colors ${error ? 'text-red-400' : 'text-gray-400 group-focus-within:text-[#5a32fa]'}`} />
                 </div>
                 <input
-                  type="email"
+                  type="tel"
                   className={`pl-12 w-full p-3.5 bg-gray-50 border rounded-xl outline-none transition-all text-sm font-semibold ${error ? 'border-red-500 bg-red-50 focus:ring-2 focus:ring-red-500/20' : 'border-gray-200 focus:bg-white focus:ring-4 focus:ring-[#5a32fa]/10 focus:border-[#5a32fa]'}`}
-                  placeholder="e.g. resident@mandovinagar.org"
-                  value={email}
+                  placeholder="e.g. +91 98221 23456"
+                  value={phone}
                   onChange={(e) => {
-                    setEmail(e.target.value);
+                    setPhone(e.target.value);
                     if (error) setError('');
                   }}
                   required
                 />
-              </div>
-            </div>
-
-            {/* PASSWORD INPUT */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                Password *
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Lock className={`h-5 w-5 transition-colors ${error ? 'text-red-400' : 'text-gray-400 group-focus-within:text-[#5a32fa]'}`} />
-                </div>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  className={`pl-12 pr-12 w-full p-3.5 bg-gray-50 border rounded-xl outline-none transition-all text-sm font-semibold ${error ? 'border-red-500 bg-red-50 focus:ring-2 focus:ring-red-500/20' : 'border-gray-200 focus:bg-white focus:ring-4 focus:ring-[#5a32fa]/10 focus:border-[#5a32fa]'}`}
-                  placeholder="Enter your login password"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (error) setError('');
-                  }}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
               </div>
             </div>
 
@@ -306,8 +242,8 @@ const LoginScreen = () => {
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <span className="flex items-center space-x-2">
-                  <KeyRound className="w-4 h-4" />
-                  <span>Sign In to Resident Portal</span>
+                  <span>Send Real-Time SMS OTP</span>
+                  <ArrowRight className="w-4 h-4" />
                 </span>
               )}
             </button>

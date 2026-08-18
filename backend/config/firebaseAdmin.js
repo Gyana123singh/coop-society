@@ -24,7 +24,7 @@ if (admin) {
         });
       } else {
         admin.initializeApp({
-          projectId: process.env.FIREBASE_PROJECT_ID || 'coop-society'
+          projectId: process.env.FIREBASE_PROJECT_ID || 'coop365-d6cbf'
         });
       }
       console.log('[Firebase Admin SDK] Initialized successfully');
