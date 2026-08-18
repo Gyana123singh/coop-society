@@ -9,13 +9,34 @@ const LoginScreen = () => {
   const [loadingSocieties, setLoadingSocieties] = useState(true);
   const [selectedSocietyId, setSelectedSocietyId] = useState('');
   
-  // Real-time Firebase Mobile Phone OTP State
-  const [phone, setPhone] = useState('+91 98221 23456');
+  // Real-time Firebase Mobile Phone OTP State - Defaults to '+91 '
+  const [phone, setPhone] = useState('+91 ');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const navigate = useNavigate();
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  // Handle phone input to maintain '+91 ' prefix by default and accept 10 digits
+  const handlePhoneChange = (e) => {
+    let inputVal = e.target.value;
+    
+    // Extract only digits
+    let digitsOnly = inputVal.replace(/\D/g, '');
+    
+    // Strip country code '91' if user typed or pasted it
+    if (digitsOnly.startsWith('91')) {
+      digitsOnly = digitsOnly.slice(2);
+    }
+    
+    // Limit to max 10 contact digits
+    if (digitsOnly.length > 10) {
+      digitsOnly = digitsOnly.slice(0, 10);
+    }
+    
+    setPhone(digitsOnly.length > 0 ? `+91 ${digitsOnly}` : '+91 ');
+    if (error) setError('');
+  };
 
   // Fetch active housing societies from MongoDB & local persistent cache
   const fetchLiveSocieties = async () => {
@@ -73,23 +94,20 @@ const LoginScreen = () => {
       return;
     }
 
-    if (!phone || phone.trim().length < 8) {
-      setError('Please enter a valid registered mobile phone number.');
+    let digitsOnly = phone.replace(/\D/g, '');
+    if (digitsOnly.startsWith('91')) {
+      digitsOnly = digitsOnly.slice(2);
+    }
+
+    if (digitsOnly.length !== 10) {
+      setError('Please enter a valid 10-digit mobile contact number.');
       return;
     }
 
+    const formattedPhone = `+91${digitsOnly}`;
+
     setError('');
     setLoading(true);
-
-    let formattedPhone = phone.trim();
-    if (!formattedPhone.startsWith('+')) {
-      const rawDigits = formattedPhone.replace(/\D/g, '');
-      if (rawDigits.length === 10) {
-        formattedPhone = `+91${rawDigits}`;
-      } else {
-        formattedPhone = `+${rawDigits}`;
-      }
-    }
 
     const targetSociety = societies.find(s => String(s._id) === String(selectedSocietyId)) || societies[0];
 
@@ -107,7 +125,7 @@ const LoginScreen = () => {
       console.error('[Firebase Phone Auth Error]', err);
       let errorMsg = 'Failed to send SMS OTP. Please check your phone number and try again.';
       if (err.code === 'auth/invalid-phone-number') {
-        errorMsg = 'Invalid phone number format. Please enter a valid number with country code (e.g. +91 98221 23456).';
+        errorMsg = 'Invalid phone number format. Please enter a valid 10-digit mobile number.';
       } else if (err.code === 'auth/too-many-requests') {
         errorMsg = 'Too many OTP requests. Please wait a few minutes before trying again.';
       } else if (err.message) {
@@ -148,7 +166,7 @@ const LoginScreen = () => {
         <div className="p-8">
           <div className="mb-6">
             <h2 className="text-xl font-bold text-gray-900 mb-1.5">Welcome Resident</h2>
-            <p className="text-sm text-gray-500">Select your Housing Society and enter your registered mobile number to sign in via Firebase SMS OTP.</p>
+            <p className="text-sm text-gray-500">Select your Housing Society and enter your registered 10-digit mobile number to sign in via SMS OTP.</p>
           </div>
 
           <form onSubmit={handleSendOtp} className="space-y-4">
@@ -215,12 +233,9 @@ const LoginScreen = () => {
                 <input
                   type="tel"
                   className={`pl-12 w-full p-3.5 bg-gray-50 border rounded-xl outline-none transition-all text-sm font-semibold ${error ? 'border-red-500 bg-red-50 focus:ring-2 focus:ring-red-500/20' : 'border-gray-200 focus:bg-white focus:ring-4 focus:ring-[#5a32fa]/10 focus:border-[#5a32fa]'}`}
-                  placeholder="e.g. +91 98221 23456"
+                  placeholder="+91 "
                   value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    if (error) setError('');
-                  }}
+                  onChange={handlePhoneChange}
                   required
                 />
               </div>
