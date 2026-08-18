@@ -85,7 +85,7 @@ const OTPScreen = () => {
     <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 p-8 relative font-sans">
 
-        <button onClick={() => navigate('/login')} className="absolute top-6 left-6 p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
+        <button onClick={() => navigate('/login')} className="cursor-pointer absolute top-6 left-6 p-2 rounded-full hover:bg-gray-100 text-gray-500 transition-colors">
           <ArrowLeft size={20} />
         </button>
 
@@ -129,7 +129,7 @@ const OTPScreen = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#5a32fa] hover:bg-[#4826d1] text-white font-semibold py-4 rounded-xl transition-all duration-200 shadow-lg shadow-[#5a32fa]/25 hover:shadow-[#5a32fa]/40 flex items-center justify-center space-x-2 disabled:opacity-50"
+            className="cursor-pointer w-full bg-[#5a32fa] hover:bg-[#4826d1] text-white font-semibold py-4 rounded-xl transition-all duration-200 shadow-lg shadow-[#5a32fa]/25 hover:shadow-[#5a32fa]/40 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

@@ -159,7 +159,7 @@ const LoginScreen = () => {
 
           <div className="inline-flex items-center space-x-1.5 bg-indigo-950/80 border border-indigo-700/60 text-indigo-300 px-3 py-1 rounded-full text-[11px] font-semibold mt-2 relative z-10">
             <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Real-time Firebase Phone OTP</span>
+            <span>Firebase Phone OTP</span>
           </div>
         </div>
 
@@ -181,7 +181,7 @@ const LoginScreen = () => {
                   type="button"
                   onClick={fetchLiveSocieties}
                   disabled={loadingSocieties}
-                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 transition-all"
+                  className="cursor-pointer text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   title="Refresh Live Housing Societies"
                 >
                   <RefreshCw className={`w-3 h-3 ${loadingSocieties ? 'animate-spin' : ''}`} />
@@ -200,7 +200,7 @@ const LoginScreen = () => {
                     setSelectedSocietyId(e.target.value);
                     if (error) setError('');
                   }}
-                  className="pl-12 pr-10 w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none transition-all text-sm font-bold text-gray-900 focus:bg-white focus:ring-4 focus:ring-[#5a32fa]/10 focus:border-[#5a32fa] appearance-none cursor-pointer disabled:opacity-60 truncate"
+                  className="pl-12 pr-10 w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none transition-all text-sm font-bold text-gray-900 focus:bg-white focus:ring-4 focus:ring-[#5a32fa]/10 focus:border-[#5a32fa] appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed truncate"
                   required
                 >
                   {loadingSocieties ? (
@@ -212,7 +212,7 @@ const LoginScreen = () => {
                       const name = s.name || 'Housing Society';
                       const displayName = name.length > 30 ? `${name.substring(0, 30)}...` : name;
                       return (
-                        <option key={s._id} value={s._id} title={name}>
+                        <option key={s._id} value={s._id} title={name} className="cursor-pointer">
                           {displayName}
                         </option>
                       );
@@ -255,13 +255,13 @@ const LoginScreen = () => {
             <button
               type="submit"
               disabled={loading || loadingSocieties}
-              className="w-full bg-[#5a32fa] hover:bg-[#4826d1] text-white font-semibold py-4 rounded-xl transition-all duration-200 shadow-lg shadow-[#5a32fa]/25 hover:shadow-[#5a32fa]/40 flex items-center justify-center space-x-2 disabled:opacity-50 mt-3"
+              className="cursor-pointer w-full bg-[#5a32fa] hover:bg-[#4826d1] text-white font-semibold py-4 rounded-xl transition-all duration-200 shadow-lg shadow-[#5a32fa]/25 hover:shadow-[#5a32fa]/40 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed mt-3"
             >
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <span className="flex items-center space-x-2">
-                  <span>Send Real-Time SMS OTP</span>
+                  <span>Send OTP</span>
                   <ArrowRight className="w-4 h-4" />
                 </span>
               )}
