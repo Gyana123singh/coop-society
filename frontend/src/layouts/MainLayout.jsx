@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { FileEdit, History, User } from 'lucide-react';
+import { FileEdit, History, User, ShieldCheck, FileText, RotateCcw } from 'lucide-react';
 
 const MainLayout = () => {
   return (

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
-import { Building2, MapPin, BadgeCheck, LogOut, Phone, Mail, User as UserIcon, RefreshCw, Edit3, Loader2, CheckCircle2, ShieldCheck, Home, CreditCard, QrCode, FileText, Upload } from 'lucide-react';
+import { Building2, MapPin, BadgeCheck, LogOut, Phone, Mail, User as UserIcon, RefreshCw, Edit3, Loader2, CheckCircle2, ShieldCheck, Home, CreditCard, QrCode, FileText, Upload, RotateCcw } from 'lucide-react';
 import axios from 'axios';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { residentDetails, updateResidentDetails, refreshSociety } = useApp();
   const { logout, user: authUser } = useAuth();
 
@@ -315,7 +317,7 @@ const Profile = () => {
 
             <button 
               onClick={logout}
-              className="w-full py-3.5 bg-white border border-red-500 text-red-600 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all hover:bg-red-50 shadow-sm"
+              className="w-full py-3.5 bg-white border border-red-500 text-red-600 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all hover:bg-red-50 shadow-sm cursor-pointer"
             >
               <LogOut size={18} className="shrink-0" />
               <span>Sign Out from Coop 365</span>

@@ -9,6 +9,10 @@ import SavedHistory from './screens/SavedHistory';
 import Profile from './screens/Profile';
 import ReceiptDetail from './screens/ReceiptDetail';
 
+import PrivacyPolicy from './screens/PrivacyPolicy';
+import TermsConditions from './screens/TermsConditions';
+import RefundPolicy from './screens/RefundPolicy';
+
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/login" />;
@@ -20,6 +24,15 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/otp" element={<OTPScreen />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsConditions />} />
+        <Route path="/terms-conditions" element={<TermsConditions />} />
+        <Route path="/terms-and-conditions" element={<TermsConditions />} />
+        <Route path="/refund" element={<RefundPolicy />} />
+        <Route path="/refund-policy" element={<RefundPolicy />} />
+        <Route path="/cancellation-policy" element={<RefundPolicy />} />
+        <Route path="/no-refund-policy" element={<RefundPolicy />} />
 
         <Route path="/" element={<PrivateRoute><MainLayout /></PrivateRoute>}>
           <Route index element={<Navigate to="/form" />} />
@@ -27,6 +40,9 @@ function App() {
           <Route path="history" element={<SavedHistory />} />
           <Route path="history/:id" element={<ReceiptDetail />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="privacy" element={<PrivacyPolicy />} />
+          <Route path="terms" element={<TermsConditions />} />
+          <Route path="refund" element={<RefundPolicy />} />
         </Route>
       </Routes>
     </Router>
