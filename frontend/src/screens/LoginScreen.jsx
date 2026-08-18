@@ -189,9 +189,9 @@ const LoginScreen = () => {
                 </button>
               </div>
 
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Building2 className="h-5 w-5 text-indigo-600" />
+              <div className="relative w-full max-w-full overflow-hidden rounded-xl">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
+                  <Building2 className="h-5 w-5 text-indigo-600 shrink-0" />
                 </div>
                 <select
                   value={selectedSocietyId}
@@ -200,7 +200,7 @@ const LoginScreen = () => {
                     setSelectedSocietyId(e.target.value);
                     if (error) setError('');
                   }}
-                  className="pl-12 pr-10 w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none transition-all text-sm font-bold text-gray-900 focus:bg-white focus:ring-4 focus:ring-[#5a32fa]/10 focus:border-[#5a32fa] appearance-none cursor-pointer disabled:opacity-60"
+                  className="pl-12 pr-10 w-full p-3.5 bg-gray-50 border border-gray-200 rounded-xl outline-none transition-all text-sm font-bold text-gray-900 focus:bg-white focus:ring-4 focus:ring-[#5a32fa]/10 focus:border-[#5a32fa] appearance-none cursor-pointer disabled:opacity-60 truncate"
                   required
                 >
                   {loadingSocieties ? (
@@ -208,14 +208,18 @@ const LoginScreen = () => {
                   ) : societies.length === 0 ? (
                     <option value="">No Active Housing Societies Found</option>
                   ) : (
-                    societies.map((s) => (
-                      <option key={s._id} value={s._id}>
-                        {s.name} ({s.regNo || 'Co-Op'})
-                      </option>
-                    ))
+                    societies.map((s) => {
+                      const name = s.name || 'Housing Society';
+                      const displayName = name.length > 30 ? `${name.substring(0, 30)}...` : name;
+                      return (
+                        <option key={s._id} value={s._id} title={name}>
+                          {displayName}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
-                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-500">
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-500 z-10">
                   {loadingSocieties ? <Loader2 className="w-4 h-4 animate-spin text-indigo-600" /> : <ChevronDown className="w-4 h-4" />}
                 </div>
               </div>
