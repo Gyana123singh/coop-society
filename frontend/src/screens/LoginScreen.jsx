@@ -95,12 +95,12 @@ const LoginScreen = () => {
 
     try {
       const confirmationResult = await sendFirebasePhoneOTP(formattedPhone);
+      window.confirmationResult = confirmationResult;
       navigate('/otp', {
         state: {
           phone: formattedPhone,
           societyId: selectedSocietyId,
-          societyName: targetSociety?.name || 'Housing Society',
-          confirmationResult
+          societyName: targetSociety?.name || 'Housing Society'
         }
       });
     } catch (err) {
